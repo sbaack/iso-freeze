@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools @ git+https://github.com/pypa/setuptools@feature/pep660"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "iso-freeze"
+version = "0.0.1"
+authors = [
+  { name="Stefan Baack" },
+]
+description = "Call pip freeze for each optional dependency in an isolated venv."
+readme = "README.md"
+license = { file="LICENSE" }
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "tomli >= 1.1.0 ; python_version < '3.11'"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/sbaack/iso-freeze"
+"Bug Tracker" = "https://github.com/sbaack/iso-freeze/issues"
+
+[project.scripts]
+iso-freeze = "iso_freeze.iso_freeze:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest"
+]
+virtualenv = [
+    "virtualenv"
+]
