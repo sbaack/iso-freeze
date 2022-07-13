@@ -181,7 +181,7 @@ def parse_args() -> argparse.Namespace:
             "No requirements.in or pyproject.toml file found in current directory. "
             "Please specify input file."
         )
-    if args.file.name != "pyproject.toml" and args.dependency:
+    if args.file.suffix != ".toml" and args.dependency:
         sys.exit(
             "You can only specify an optional dependency if your input file is "
             "pyproject.toml."
@@ -197,7 +197,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     arguments: argparse.Namespace = parse_args()
     create_venv()
-    if arguments.file.name == "pyproject.toml":
+    if arguments.file.suffix == ".toml":
         dependencies: Optional[list[str]] = read_toml(
             arguments.file, arguments.dependency
         )
