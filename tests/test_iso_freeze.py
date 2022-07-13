@@ -96,24 +96,3 @@ def test_install_package(mocker):
         "requirements.in",
     ]
     iso_freeze.run_pip_install.assert_called_with == mocked_pip_install_command_2
-
-
-def test_create_venv(mocker):
-    """Test if venv is created with correct command."""
-    mocker.patch("iso_freeze.iso_freeze.run_venv_creation")
-    virtualenv_command = [
-        "python3",
-        "-m",
-        "virtualenv",
-        "--no-setuptools",
-        "--no-wheel",
-        "-q",
-        iso_freeze.TEMP_VENV.name,
-    ]
-    venv_command = ["python3", "-m", "venv", iso_freeze.TEMP_VENV.name]
-    mocker.patch("importlib.util.find_spec", return_value=True)
-    iso_freeze.create_venv()
-    iso_freeze.run_venv_creation.assert_called_with == virtualenv_command
-    mocker.patch("importlib.util.find_spec", return_value=False)
-    iso_freeze.create_venv()
-    iso_freeze.run_venv_creation.assert_called_with == venv_command

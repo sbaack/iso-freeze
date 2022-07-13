@@ -18,14 +18,6 @@ However, you can of course install `iso-freeze` in your local venv via pip:
 python -m pip install --upgrade iso-freeze
 ```
 
-Optionally, you can install `iso-freeze` with [`virtualenv`](https://github.com/pypa/virtualenv), which makes creating temporary venvs a little faster than the default `python -m venv`:
-
-```bash
-pipx install iso-freeze[virtualenv]
-# OR:
-python -m pip install --upgrade iso-freeze[virtualenv]
-```
-
 ## Usage
 
 You can use `iso-freeze` either with a [PEP621 compatible](https://peps.python.org/pep-0621/) `pyproject.toml` file or with `requirements` files.

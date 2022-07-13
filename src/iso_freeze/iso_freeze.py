@@ -4,7 +4,6 @@ different optional dependencies (e.g. 'dev' and 'doc' requirements)."""
 import argparse
 import subprocess
 import shutil
-import importlib.util
 import sys
 from typing import Optional, Final
 from pathlib import Path
@@ -92,30 +91,9 @@ def run_pip_install(pip_install_command: list[str]) -> None:
 
 
 def create_venv() -> None:
-    """Create temporary venv.
-
-    Uses virtualenv if available, otherwise falls back to Python venv.
-    """
-    virtualenv_installed = importlib.util.find_spec("virtualenv")
-    if virtualenv_installed:
-        create_venv_command: list[str] = [
-            "python3",
-            "-m",
-            "virtualenv",
-            "--no-setuptools",
-            "--no-wheel",
-            "-q",
-            TEMP_VENV.name,
-        ]
-    else:
-        create_venv_command = ["python3", "-m", "venv", TEMP_VENV.name]
-    run_venv_creation(create_venv_command=create_venv_command)
-
-
-def run_venv_creation(create_venv_command: list[str]) -> None:
-    """Run command to create venv."""
+    """Create temporary venv."""
     try:
-        subprocess.run(create_venv_command, check=True)
+        subprocess.run(["python3", "-m", "venv", TEMP_VENV.name], check=True)
         subprocess.run(
             [TEMP_VENV_EXEC, "-m", "pip", "install", "-q", "-U", "pip"], check=True
         )

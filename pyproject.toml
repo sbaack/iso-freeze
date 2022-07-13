@@ -33,6 +33,3 @@ dev = [
     "pytest",
     "pytest-mock"
 ]
-virtualenv = [
-    "virtualenv"
-]
