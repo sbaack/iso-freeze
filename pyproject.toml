@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools @ git+https://github.com/pypa/setuptools@feature/pep660"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "iso-freeze"
