@@ -173,7 +173,7 @@ def parse_args() -> argparse.Namespace:
         # pip-args haven't been set
         default=[],
         help="List of arguments to be passed to pip install. Call as: "
-             "pip-args \"--pip-arg1 value --pip-arg2 value\"",
+        'pip-args "--pip-arg1 value --pip-arg2 value"',
     )
     args = argparser.parse_args()
     if not args.file:
