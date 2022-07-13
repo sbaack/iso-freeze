@@ -52,34 +52,39 @@ def read_toml(
     return dependencies
 
 
-def install_toml(dependencies: list[str]) -> None:
-    """Install dependencies listed in pyproject.toml in temporary venv.
+def install_packages(
+    dependencies: Optional[list[str]],
+    requirements_in: Optional[Path],
+    pip_args: Optional[list[str]],
+) -> None:
+    """Install packages listed in pyproject.toml or in a requirements file into
+    temporary venv.
 
     Arguments:
-        dependencies -- names of dependencies to install (list[str])
+        dependencies -- names of dependencies to install (Optional[list[str]])
+        requirements_in -- path to requirements file (Optional[Path])
+        pip_args -- arguments to be passed to pip (Optional[list[str]])
     """
+    pip_install_command = [
+        TEMP_VENV_EXEC,
+        "-m",
+        "pip",
+        "install",
+        *pip_args,
+        "-q",
+        "-U",
+    ]
+    if dependencies:
+        pip_install_command.extend([dependency for dependency in dependencies])
+    elif requirements_in:
+        pip_install_command.extend(["-r", requirements_in])
+    run_pip_install(pip_install_command=pip_install_command)
+
+
+def run_pip_install(pip_install_command: list[str]) -> None:
+    """Run pip install."""
     try:
-        subprocess.run(
-            [TEMP_VENV_EXEC, "-m", "pip", "install", "-q", "-U", *dependencies],
-            check=True,
-        )
-    except subprocess.CalledProcessError as error:
-        shutil.rmtree(TEMP_VENV)
-        error.output
-        sys.exit()
-
-
-def install_requirements_in(requirements_in: Path) -> None:
-    """Install dependencies listed in requirements file to temporary venv.
-
-    Keyword Arguments:
-        requirements_in -- Path to requirements file
-    """
-    try:
-        subprocess.run(
-            [TEMP_VENV_EXEC, "-m", "pip", "install", "-q", "-Ur", requirements_in],
-            check=True,
-        )
+        subprocess.run(pip_install_command, check=True)
     except subprocess.CalledProcessError as error:
         shutil.rmtree(TEMP_VENV)
         error.output
@@ -94,7 +99,7 @@ def create_venv() -> None:
     virtualenv_installed = importlib.util.find_spec("virtualenv")
     if virtualenv_installed:
         create_venv_command: list[str] = [
-            sys.executable,
+            "python3",
             "-m",
             "virtualenv",
             "--no-setuptools",
@@ -103,12 +108,24 @@ def create_venv() -> None:
             TEMP_VENV.name,
         ]
     else:
-        create_venv_command = [sys.executable, "-m", "venv", TEMP_VENV.name]
-    subprocess.run(create_venv_command)
-    subprocess.run([TEMP_VENV_EXEC, "-m", "pip", "install", "-q", "-U", "pip"])
+        create_venv_command = ["python3", "-m", "venv", TEMP_VENV.name]
+    run_venv_creation(create_venv_command=create_venv_command)
 
 
-def freeze_venv(output_file: Path) -> None:
+def run_venv_creation(create_venv_command: list[str]) -> None:
+    """Run command to create venv."""
+    try:
+        subprocess.run(create_venv_command, check=True)
+        subprocess.run(
+            [TEMP_VENV_EXEC, "-m", "pip", "install", "-q", "-U", "pip"], check=True
+        )
+    except subprocess.CalledProcessError as error:
+        shutil.rmtree(TEMP_VENV)
+        error.output
+        sys.exit()
+
+
+def run_pip_freeze(output_file: Path) -> None:
     """Create pinned requirements file.
 
     Arguments:
@@ -124,16 +141,18 @@ def freeze_venv(output_file: Path) -> None:
         sys.exit("There are no dependencies to pin")
 
 
-def determine_default() -> Path:
+def determine_default_file() -> Path:
     """Determine default input file if none has been specified.
 
     Returns:
         Path to default file [Path]
     """
     if Path("requirements.in").exists():
-        default: Path = Path("requirements.in")
+        default: Optional[Path] = Path("requirements.in")
     elif Path("pyproject.toml").exists():
         default = Path("pyproject.toml")
+    else:
+        default = None
     return default
 
 
@@ -148,8 +167,8 @@ def parse_args() -> argparse.Namespace:
         "file",
         type=Path,
         nargs="?",
-        default=determine_default(),
-        help="Path to input file. Can be pyproject.toml or requirements files. "
+        default=determine_default_file(),
+        help="Path to input file. Can be pyproject.toml or requirements file. "
         "Defaults to 'requirements.in' or 'pyproject.toml' in current directory.",
     )
     argparser.add_argument(
@@ -165,6 +184,14 @@ def parse_args() -> argparse.Namespace:
         default=Path("requirements.txt"),
         help="Name of the output file. Defaults to 'requirements.txt' if unspecified.",
     )
+    argparser.add_argument(
+        "--pip-args",
+        # Set default to empty list to enable unpacking in install function even if
+        # pip-args haven't been set
+        default=[],
+        help="List of arguments to be passed to pip install. Call as: "
+             "pip-args \"--pip-arg1 value --pip-arg2 value\"",
+    )
     args = argparser.parse_args()
     if not args.file:
         sys.exit(
@@ -176,6 +203,11 @@ def parse_args() -> argparse.Namespace:
             "You can only specify an optional dependency if your input file is "
             "pyproject.toml."
         )
+    if not args.file.is_file():
+        sys.exit(f"Not a file: {args.file}")
+    # If pip-args have been provided, split them into list
+    if args.pip_args:
+        args.pip_args = args.pip_args.split(" ")
     return args
 
 
@@ -183,10 +215,17 @@ def main() -> None:
     arguments: argparse.Namespace = parse_args()
     create_venv()
     if arguments.file.name == "pyproject.toml":
-        install_toml(read_toml(arguments.file, arguments.dependency))
+        dependencies: Optional[list[str]] = read_toml(
+            arguments.file, arguments.dependency
+        )
     else:
-        install_requirements_in(arguments.file)
-    freeze_venv(arguments.output)
+        dependencies = None
+    install_packages(
+        dependencies=dependencies,
+        requirements_in=arguments.file,
+        pip_args=arguments.pip_args,
+    )
+    run_pip_freeze(arguments.output)
     shutil.rmtree(TEMP_VENV)
     print(f"Pinned specified requirements in {arguments.output}")
 

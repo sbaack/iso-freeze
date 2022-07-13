@@ -8,7 +8,7 @@ version = "0.0.1"
 authors = [
   { name="Stefan Baack" },
 ]
-description = "Call pip freeze for each optional dependency in an isolated venv."
+description = "Call pip freeze in an isolated venv to cleanly separate pinned requirements for different optional dependencies."
 readme = "README.md"
 license = { file="LICENSE" }
 requires-python = ">=3.9"
@@ -30,7 +30,8 @@ iso-freeze = "iso_freeze.iso_freeze:main"
 
 [project.optional-dependencies]
 dev = [
-    "pytest"
+    "pytest",
+    "pytest-mock"
 ]
 virtualenv = [
     "virtualenv"
