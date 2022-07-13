@@ -1,6 +1,6 @@
 # iso-freeze: Call pip freeze in an isolated venv
 
-`pip freeze` will always pin everything installed in your current venv, so if you want to pin only your `doc` but not your `dev` requirements, you best create a fresh environment. `iso-freeze` automates this: you just specify a `requirements` file or an optional dependency in your `pyproject.toml` and it automatically creates a temporary venv, installs all necessary requirements in it and generates pinned `*requirements.txt` files from it.
+`pip freeze` will always pin everything installed in your current venv, so if you want to pin only your `doc` but not your `dev` requirements, you best create a fresh environment. `iso-freeze` allows you to pin requirements independently from your current environment: you just specify a `requirements` file or an optional dependency in your `pyproject.toml` and it automatically creates a temporary venv, installs all necessary requirements in it and generates pinned `*requirements.txt` files from it.
 
 `iso-freeze` is a very simple version of the `pip-compile` command provided by [`pip-tools`](https://github.com/jazzband/pip-tools). The biggest difference is that is `iso-freeze` does not rely on any `pip` internals and just calls plain `pip freeze` in the background.
 
