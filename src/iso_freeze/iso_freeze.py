@@ -38,16 +38,21 @@ def read_toml(
         metadata = tomllib.load(f)
     dependencies: list[str] = metadata["project"].get("dependencies")
     if optional_dependency:
-        optional_dependency_reqs: Optional[list[str]] = (
-            metadata["project"].get("optional-dependencies").get(optional_dependency)
-        )
-        if optional_dependency_reqs:
-            dependencies.extend(optional_dependency_reqs)
-        else:
-            sys.exit(
-                f"No optional dependency named {optional_dependency} found in your "
-                "pyproject.toml"
+        if metadata["project"].get("optional-dependencies"):
+            optional_dependency_reqs: Optional[list[str]] = (
+                metadata["project"]
+                .get("optional-dependencies")
+                .get(optional_dependency)
             )
+            if optional_dependency_reqs:
+                dependencies.extend(optional_dependency_reqs)
+            else:
+                sys.exit(
+                    f"No optional dependency named {optional_dependency} found in your "
+                    "pyproject.toml"
+                )
+        else:
+            sys.exit("No optional dependencies defined in your pyproject.toml")
     return dependencies
 
 
