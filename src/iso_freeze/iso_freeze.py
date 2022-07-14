@@ -108,15 +108,19 @@ def create_venv() -> None:
         sys.exit()
 
 
-def run_pip_freeze(output_file: Path) -> None:
+def run_pip_freeze(output_file: Path, input_file: Path) -> None:
     """Create pinned requirements file.
 
     Arguments:
         output_file -- Path and name of output file
+        input_file -- Path to input file
     """
-    pip_freeze_output: bytes = subprocess.check_output(
-        [TEMP_VENV_EXEC, "-m", "pip", "-q", "freeze"]
-    )
+    pip_freeze_command: list[str] = [TEMP_VENV_EXEC, "-m", "pip", "-q", "freeze"]
+    # If input file is a requirements file, add "-r input_file" for nicer
+    # requirements.txt format
+    if input_file.suffix != ".toml":
+        pip_freeze_command.extend(["-r", input_file])
+    pip_freeze_output: bytes = subprocess.check_output(pip_freeze_command)
     if pip_freeze_output:
         output_file.write_text(pip_freeze_output.decode("utf-8"))
     else:
@@ -208,7 +212,7 @@ def main() -> None:
         requirements_in=arguments.file,
         pip_args=arguments.pip_args,
     )
-    run_pip_freeze(arguments.output)
+    run_pip_freeze(arguments.output, arguments.file)
     shutil.rmtree(TEMP_VENV)
     print(f"Pinned specified requirements in {arguments.output}")
 
