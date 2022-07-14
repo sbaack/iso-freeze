@@ -1,18 +1,18 @@
-.PHONY: help update-deps setup clean pipx-upload pipx-publish upload publish test
+.PHONY: help update-dev-deps setup clean pipx-upload pipx-publish upload publish test
 
 help:
-	@echo 'clean:        remove dist and .egg-info directory'
-	@echo 'pipx-publish: publish new version on pypi.org using pipx run'
-	@echo 'publish:      publish new version on pypi.org using local installs'
-	@echo 'test:         run all tests'
-	@echo 'update-deps:  update pip and project dependencies'
-	@echo 'setup:        editiable install of archive-md-urls'
+	@echo 'clean:           remove dist and .egg-info directory'
+	@echo 'pipx-publish:    publish new version on pypi.org using pipx run'
+	@echo 'publish:         publish new version on pypi.org using local installs'
+	@echo 'test:            run all tests'
+	@echo 'update-dev-deps: update pip and dev dependencies'
+	@echo 'setup:           editiable install of archive-md-urls'
 
-update-deps:
+update-dev-deps:
 	python -m pip install -U pip
-	python -m pip install -Ue .
+	python -m pip install -Ue .[dev]
 
-setup: update-deps
+setup: update-dev-deps
 
 clean:
 	rm -rf dist
