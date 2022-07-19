@@ -1,0 +1,13 @@
+[project]
+dependencies = [
+"tomli"
+]
+
+[project.optional-dependencies]
+dev = [
+"pytest",
+"pytest-mock"
+]
+virtualenv = [
+"virtualenv"
+]

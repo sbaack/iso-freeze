@@ -33,3 +33,14 @@ dev = [
     "pytest",
     "pytest-mock"
 ]
+
+[tool.hatch.envs.tests]
+features = [
+    "dev"
+]
+
+[tool.hatch.envs.tests.scripts]
+test = "python -m pytest"
+
+[[tool.hatch.envs.tests.matrix]]
+python = ["39", "310", "311"]

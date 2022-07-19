@@ -9,6 +9,8 @@ else:
 from iso_freeze import iso_freeze
 
 
+TEST_TOML: Path = Path(Path(__file__).parent.resolve(), "test_pyproject.toml")
+
 def test_temp_venv_exec_path():
     """Test whether TEMP_VENV_EXEC is correctly constructed on different OS."""
     if sys.platform == "win32":
@@ -19,44 +21,19 @@ def test_temp_venv_exec_path():
         assert iso_freeze.TEMP_VENV_EXEC == Path(iso_freeze.TEMP_VENV, "bin", "python")
 
 
-def load_test_toml():
-    """Return a test TOML string."""
-    test_toml = """
-    [project]
-    dependencies = [
-        "tomli"
-    ]
-
-    [project.optional-dependencies]
-    dev = [
-        "pytest",
-        "pytest-mock"
-    ]
-    virtualenv = [
-        "virtualenv"
-    ]
-    """
-    return tomllib.loads(test_toml)
-
 def test_dev_deps(mocker):
     """Test whether the correct list of requirements is loaded."""
-    data = load_test_toml()
-    mocker.patch("tomllib.load", return_value=data)
-    dev_deps = iso_freeze.read_toml(toml_file=Path(__file__).resolve(), optional_dependency="dev")
+    dev_deps = iso_freeze.read_toml(TEST_TOML, optional_dependency="dev")
     assert dev_deps == ["tomli", "pytest", "pytest-mock"]
 
 def test_virtualenv_deps(mocker):
     """Test whether the correct list of requirements is loaded."""
-    data = load_test_toml()
-    mocker.patch("tomllib.load", return_value=data)
-    virtualenv_deps = iso_freeze.read_toml(toml_file=Path(__file__).resolve(), optional_dependency="virtualenv")
+    virtualenv_deps = iso_freeze.read_toml(TEST_TOML, optional_dependency="virtualenv")
     assert virtualenv_deps == ["tomli", "virtualenv"]
 
 def test_base_requirements(mocker):
     """Test whether the correct list of requirements is loaded."""
-    data = load_test_toml()
-    mocker.patch("tomllib.load", return_value=data)
-    base_requirements = iso_freeze.read_toml(toml_file=Path(__file__).resolve(), optional_dependency=None)
+    base_requirements = iso_freeze.read_toml(TEST_TOML, optional_dependency=None)
     assert base_requirements == ["tomli"]
 
 

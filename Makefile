@@ -34,4 +34,4 @@ upload: clean
 publish: upload clean
 
 test:
-	python -m pytest
+	hatch run tests:test
