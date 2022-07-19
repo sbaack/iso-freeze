@@ -5,7 +5,7 @@ import argparse
 import subprocess
 import shutil
 import sys
-from typing import Optional, Final
+from typing import Optional, Final, Union
 from pathlib import Path
 
 if sys.version_info >= (3, 11, 0):
@@ -69,15 +69,18 @@ def install_packages(
         requirements_in -- path to requirements file (Optional[Path])
         pip_args -- arguments to be passed to pip (Optional[list[str]])
     """
-    pip_install_command = [
+    pip_install_command: list[Union[Path, str]] = [
         TEMP_VENV_EXEC,
         "-m",
         "pip",
-        "install",
-        *pip_args,
-        "-q",
-        "-U",
+        "install"
     ]
+    # If pip_args have been provided, inject them after the 'install' keyword
+    if pip_args:
+        pip_install_command.extend(pip_args)
+    # Part of the default args: Make install quiet and upgrade
+    pip_install_command.extend(["-q", "-U"])
+    # Finally, add commands to install either dependency list of requirements file
     if dependencies:
         pip_install_command.extend([dependency for dependency in dependencies])
     elif requirements_in:
@@ -85,7 +88,7 @@ def install_packages(
     run_pip_install(pip_install_command=pip_install_command)
 
 
-def run_pip_install(pip_install_command: list[str]) -> None:
+def run_pip_install(pip_install_command: list[Union[Path, str]]) -> None:
     """Run pip install."""
     try:
         subprocess.run(pip_install_command, check=True)
@@ -115,7 +118,13 @@ def run_pip_freeze(output_file: Path, input_file: Path) -> None:
         output_file -- Path and name of output file
         input_file -- Path to input file
     """
-    pip_freeze_command: list[str] = [TEMP_VENV_EXEC, "-m", "pip", "-q", "freeze"]
+    pip_freeze_command: list[Union[Path, str]] = [
+        TEMP_VENV_EXEC,
+        "-m",
+        "pip",
+        "-q",
+        "freeze",
+    ]
     # If input file is a requirements file, add "-r input_file" for nicer
     # requirements.txt format
     if input_file.suffix != ".toml":
@@ -128,7 +137,7 @@ def run_pip_freeze(output_file: Path, input_file: Path) -> None:
         sys.exit("There are no dependencies to pin")
 
 
-def determine_default_file() -> Path:
+def determine_default_file() -> Optional[Path]:
     """Determine default input file if none has been specified.
 
     Returns:
