@@ -1,10 +1,11 @@
 import sys
+from typing import Final
 from pathlib import Path
 
 from iso_freeze import iso_freeze
 
 
-TEST_TOML: Path = Path(Path(__file__).parent.resolve(), "test_pyproject.toml")
+TEST_TOML: Final[Path] = Path(Path(__file__).parent.resolve(), "test_pyproject.toml")
 
 
 def test_temp_venv_exec_path():
