@@ -1,11 +1,6 @@
 import sys
 from pathlib import Path
 
-if sys.version_info >= (3, 11, 0):
-    import tomllib
-else:
-    import tomli as tomllib  # type: ignore
-
 from iso_freeze import iso_freeze
 
 
