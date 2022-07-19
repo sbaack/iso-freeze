@@ -59,7 +59,7 @@ def read_toml(
 def install_packages(
     dependencies: Optional[list[str]],
     requirements_in: Optional[Path],
-    pip_args: Optional[list[str]],
+    install_args: Optional[list[str]],
 ) -> None:
     """Install packages listed in pyproject.toml or in a requirements file into
     temporary venv.
@@ -73,11 +73,11 @@ def install_packages(
         TEMP_VENV_EXEC,
         "-m",
         "pip",
-        "install"
+        "install",
     ]
-    # If pip_args have been provided, inject them after the 'install' keyword
-    if pip_args:
-        pip_install_command.extend(pip_args)
+    # If install_args have been provided, inject them after the 'install' keyword
+    if install_args:
+        pip_install_command.extend(install_args)
     # Part of the default args: Make install quiet and upgrade
     pip_install_command.extend(["-q", "-U"])
     # Finally, add commands to install either dependency list of requirements file
@@ -111,7 +111,9 @@ def create_venv() -> None:
         sys.exit()
 
 
-def run_pip_freeze(output_file: Path, input_file: Path) -> None:
+def freeze_packages(
+    output_file: Path, input_file: Path, freeze_args: Optional[list[str]]
+) -> None:
     """Create pinned requirements file.
 
     Arguments:
@@ -125,10 +127,23 @@ def run_pip_freeze(output_file: Path, input_file: Path) -> None:
         "-q",
         "freeze",
     ]
+    # If freeze_args have been provided, inject them after the 'freeze' keyword
+    if freeze_args:
+        pip_freeze_command.extend(freeze_args)
     # If input file is a requirements file, add "-r input_file" for nicer
     # requirements.txt format
     if input_file.suffix != ".toml":
-        pip_freeze_command.extend(["-r", input_file])
+        # Don't add "-r input_file" if the "--exclude <package>" option was provided
+        # Otherwise "-r input_file" would negate "--exclude" if the excluded package
+        # is listed in the input file
+        if not freeze_args or "--exclude" not in freeze_args:
+            pip_freeze_command.extend(["-r", input_file])
+    run_pip_freeze(pip_freeze_command=pip_freeze_command, output_file=output_file)
+
+
+def run_pip_freeze(
+    pip_freeze_command: list[Union[Path, str]], output_file: Path
+) -> None:
     pip_freeze_output: bytes = subprocess.check_output(pip_freeze_command)
     if pip_freeze_output:
         output_file.write_text(pip_freeze_output.decode("utf-8"))
@@ -181,12 +196,16 @@ def parse_args() -> argparse.Namespace:
         help="Name of the output file. Defaults to 'requirements.txt' if unspecified.",
     )
     argparser.add_argument(
-        "--pip-args",
-        # Set default to empty list to enable unpacking in install function even if
-        # pip-args haven't been set
-        default=[],
+        "--install-args",
+        type=str,
         help="List of arguments to be passed to pip install. Call as: "
-        'pip-args "--pip-arg1 value --pip-arg2 value"',
+        'install-args "--arg1 value --arg2 value"',
+    )
+    argparser.add_argument(
+        "--freeze-args",
+        type=str,
+        help="List of arguments to be passed to pip freeze. Call as: "
+        'freeze-args "--arg1 value --arg2 value"',
     )
     args = argparser.parse_args()
     if not args.file:
@@ -201,9 +220,11 @@ def parse_args() -> argparse.Namespace:
         )
     if not args.file.is_file():
         sys.exit(f"Not a file: {args.file}")
-    # If pip-args have been provided, split them into list
-    if args.pip_args:
-        args.pip_args = args.pip_args.split(" ")
+    # If install or freeze-args have been provided, split them into list
+    if args.install_args:
+        args.install_args = args.install_args.split(" ")
+    if args.freeze_args:
+        args.freeze_args = args.freeze_args.split(" ")
     return args
 
 
@@ -219,9 +240,13 @@ def main() -> None:
     install_packages(
         dependencies=dependencies,
         requirements_in=arguments.file,
-        pip_args=arguments.pip_args,
+        install_args=arguments.install_args,
     )
-    run_pip_freeze(arguments.output, arguments.file)
+    freeze_packages(
+        output_file=arguments.output,
+        input_file=arguments.file,
+        freeze_args=arguments.freeze_args,
+    )
     shutil.rmtree(TEMP_VENV)
     print(f"Pinned specified requirements in {arguments.output}")
 

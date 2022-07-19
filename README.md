@@ -52,8 +52,15 @@ To pin requirements from a different `*requirements.in` file, simply specify it:
 iso-freeze requirements/dev-requirements.in -o requirements/dev-requirements.txt
 ```
 
-You can pass arguments directly to `pip` with the `--pip-args` flag:
+## Passing arguments to pip
+
+You can pass arguments directly to `pip install` and `pip freeze` with the `--install-args` and `freeze-args` flags:
 
 ```bash
-iso-freeze dev-requirements.in --pip-args "--upgrade-strategy eager --require-hashes"
+iso-freeze dev-requirements.in --install-args "--upgrade-strategy eager --require-hashes"
+iso-freeze pyproject.toml --freeze-args "--exclude cowsay"
+# Or both
+iso-freeze dev-requirements.in --install-args "--upgrade-strategy eager" --freeze-args "--exclude cowsay"
 ```
+
+Please note that `iso-freeze` will call `pip freeze` with the `-r <requiements-file>` flag by default if a requirements file is used as input _unless_ you pass the `--exclude <package>` flag via `--freeze-args`. If both the `-r <requirements-file>` and the `--exclude` flags are used, the `--exclude` flag might be negated if the excluded package is explicitly mentioned in the specified requirements file. To avoid unexpected outcomes, `iso-freeze` won't add any additional flags if `--exclude` is passed to `pip freeze` via `--freeze-args`.
