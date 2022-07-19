@@ -20,19 +20,23 @@ def test_temp_venv_exec_path():
 
 def test_dev_deps():
     """Test whether the correct list of requirements is loaded."""
-    dev_deps = iso_freeze.read_toml(TEST_TOML, optional_dependency="dev")
+    dev_deps = iso_freeze.read_toml(toml_file=TEST_TOML, optional_dependency="dev")
     assert dev_deps == ["tomli", "pytest", "pytest-mock"]
 
 
 def test_virtualenv_deps():
     """Test whether the correct list of requirements is loaded."""
-    virtualenv_deps = iso_freeze.read_toml(TEST_TOML, optional_dependency="virtualenv")
+    virtualenv_deps = iso_freeze.read_toml(
+        toml_file=TEST_TOML, optional_dependency="virtualenv"
+    )
     assert virtualenv_deps == ["tomli", "virtualenv"]
 
 
 def test_base_requirements():
     """Test whether the correct list of requirements is loaded."""
-    base_requirements = iso_freeze.read_toml(TEST_TOML, optional_dependency=None)
+    base_requirements = iso_freeze.read_toml(
+        toml_file=TEST_TOML, optional_dependency=None
+    )
     assert base_requirements == ["tomli"]
 
 
@@ -42,7 +46,7 @@ def test_install_package(mocker):
     iso_freeze.install_packages(
         dependencies=["pytest", "pytest-mock"],
         requirements_in=None,
-        install_args=[],
+        install_args=None,
     )
     mocked_pip_install_command_1 = [
         iso_freeze.TEMP_VENV_EXEC,
