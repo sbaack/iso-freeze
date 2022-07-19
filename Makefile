@@ -23,13 +23,13 @@ pipx-upload: clean
 	pipx run twine check dist/*
 	pipx run twine upload dist/*
 
-pipx-publish: upload clean
+pipx-publish: pipx-upload clean
 
 upload: clean
 	python -m pip install -U build twine
-	build
-	twine check dist/*
-	twine upload dist/*
+	python -m build
+	python -m twine check dist/*
+	python -m twine upload dist/*
 
 publish: upload clean
 
