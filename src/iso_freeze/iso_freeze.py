@@ -92,7 +92,11 @@ def install_packages(
 
 
 def run_pip_install(pip_install_command: list[Union[Path, str]]) -> None:
-    """Run pip install."""
+    """Run pip install.
+
+    Arguments:
+        pip_install_command -- Command for pip install (list[Union[Path, str]])
+    """
     try:
         subprocess.run(pip_install_command, check=True)
     except subprocess.CalledProcessError as error:
@@ -172,7 +176,7 @@ def determine_default_file() -> Optional[Path]:
     """Determine default input file if none has been specified.
 
     Returns:
-        Path to default file [Path]
+        Path to default file (Optional[Path])
     """
     if Path("requirements.in").exists():
         default: Optional[Path] = Path("requirements.in")
