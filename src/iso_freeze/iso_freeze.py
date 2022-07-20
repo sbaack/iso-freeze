@@ -166,9 +166,9 @@ def run_pip_freeze(
         output_file -- Path to and name of requirements.txt file (Path)
         verbose -- Whether output of pip freeze is printed (bool)
     """
-    pip_freeze_output: bytes = subprocess.check_output(pip_freeze_command)
-    if pip_freeze_output:
-        pip_freeze_output = pip_freeze_output.decode("utf-8")
+    pip_freeze_raw_output: bytes = subprocess.check_output(pip_freeze_command)
+    if pip_freeze_raw_output:
+        pip_freeze_output: str = pip_freeze_raw_output.decode("utf-8")
         output_file.write_text(pip_freeze_output)
         if verbose:
             print(f"\nPinned packages:\n{pip_freeze_output}")
