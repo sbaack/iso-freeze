@@ -47,14 +47,15 @@ def test_install_package(mocker):
         dependencies=["pytest", "pytest-mock"],
         requirements_in=None,
         install_args=None,
+        verbose=False,
     )
     mocked_pip_install_command_1 = [
         iso_freeze.TEMP_VENV_EXEC,
         "-m",
         "pip",
         "install",
+        "--upgrade",
         "-q",
-        "-U",
         "pytest",
         "pytest-mock",
     ]
@@ -63,19 +64,36 @@ def test_install_package(mocker):
         dependencies=None,
         requirements_in=Path("requirements.in"),
         install_args=["--upgrade-strategy", "eager"],
+        verbose=False,
     )
     mocked_pip_install_command_2 = [
         iso_freeze.TEMP_VENV_EXEC,
         "-m",
         "pip",
         "install",
+        "--upgrade",
         "--upgrade-strategy",
-        "eager" "-q",
-        "-U",
+        "eager",
+        "-q",
         "-r",
         "requirements.in",
     ]
     iso_freeze.run_pip_install.assert_called_with == mocked_pip_install_command_2
+    iso_freeze.install_packages(
+        dependencies=None,
+        requirements_in=Path("requirements.in"),
+        install_args=None,
+        verbose=True,
+    )
+    mocked_pip_install_command_2 = [
+        iso_freeze.TEMP_VENV_EXEC,
+        "-m",
+        "pip",
+        "install",
+        "--upgrade",
+        "-r",
+        "requirements.in",
+    ]
 
 
 def test_freeze_packages(mocker):
@@ -85,7 +103,6 @@ def test_freeze_packages(mocker):
         iso_freeze.TEMP_VENV_EXEC,
         "-m",
         "pip",
-        "-q",
         "freeze",
         "-r",
         "requirements.in",
@@ -94,13 +111,13 @@ def test_freeze_packages(mocker):
         output_file=Path("requirements.txt"),
         input_file=Path("requirements.in"),
         freeze_args=None,
+        verbose=False,
     )
     iso_freeze.run_pip_freeze.assert_called_with = mocked_pip_freeze_command_1
     mocked_pip_freeze_command_2 = [
         iso_freeze.TEMP_VENV_EXEC,
         "-m",
         "pip",
-        "-q",
         "freeze",
         "--local",
         "--all",
@@ -111,13 +128,13 @@ def test_freeze_packages(mocker):
         output_file=Path("requirements.txt"),
         input_file=Path("requirements.in"),
         freeze_args=["--local", "--all"],
+        verbose=False,
     )
     iso_freeze.run_pip_freeze.assert_called_with = mocked_pip_freeze_command_2
     mocked_pip_freeze_command_3 = [
         iso_freeze.TEMP_VENV_EXEC,
         "-m",
         "pip",
-        "-q",
         "freeze",
         "--local",
         "--exclude",
@@ -127,5 +144,6 @@ def test_freeze_packages(mocker):
         output_file=Path("requirements.txt"),
         input_file=Path("requirements.in"),
         freeze_args=["--local", "--exclude", "tomli"],
+        verbose=False,
     )
     iso_freeze.run_pip_freeze.assert_called_with = mocked_pip_freeze_command_3
