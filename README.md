@@ -38,7 +38,7 @@ iso-freeze -d dev -o dev-requirements.txt
 # OR `iso-freeze pyproject.toml -d dev -o dev-requirements.txt`
 ```
 
-For working with `requirement` files, `iso-freeze` follows the convention established by [`pip-tools`](https://github.com/jazzband/pip-tools) and assumes you store your unpinned top-level requirements in `*requirements.in` files. So if you're currently in the directory that contains your `requirements.in` file, you can also just call the following to create or update your `requirements.txt`:
+For working with requirements files, `iso-freeze` follows the convention established by [`pip-tools`](https://github.com/jazzband/pip-tools) and assumes you store your unpinned top-level requirements in `*requirements.in` files. So if you're currently in the directory that contains your `requirements.in` file, you can also just call the following to create or update your `requirements.txt`:
 
 ```bash
 iso-freeze
