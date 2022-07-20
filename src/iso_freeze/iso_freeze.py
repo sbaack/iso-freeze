@@ -105,10 +105,15 @@ def run_pip_install(pip_install_command: list[Union[Path, str]]) -> None:
         sys.exit()
 
 
-def create_venv() -> None:
-    """Create temporary venv."""
+def create_venv(python_exec: Path) -> None:
+    """Create temporary venv.
+
+    Arguments:
+        python_exec -- Path to Python interpreter to use (Path)
+    """
     try:
-        subprocess.run(["python3", "-m", "venv", TEMP_VENV.name], check=True)
+        subprocess.run([python_exec, "-m", "venv", TEMP_VENV.name], check=True)
+        # Quietly update pip to the latest version
         subprocess.run(
             [TEMP_VENV_EXEC, "-m", "pip", "install", "-q", "-U", "pip"], check=True
         )
@@ -216,6 +221,13 @@ def parse_args() -> argparse.Namespace:
         help="Name of the output file. Defaults to 'requirements.txt' if unspecified.",
     )
     argparser.add_argument(
+        "--python",
+        "-p",
+        type=Path,
+        default=Path("python3"),
+        help="Specify path to Python interpreter to use. Defaults to 'python3'.",
+    )
+    argparser.add_argument(
         "--install-args",
         type=str,
         help="List of arguments to be passed to pip install. Call as: "
@@ -256,7 +268,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     arguments: argparse.Namespace = parse_args()
-    create_venv()
+    create_venv(arguments.python)
     if arguments.file.suffix == ".toml":
         dependencies: Optional[list[str]] = read_toml(
             arguments.file, arguments.dependency
