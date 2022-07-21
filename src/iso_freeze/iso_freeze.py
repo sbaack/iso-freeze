@@ -1,10 +1,11 @@
-"""Call pip freeze in isolated venv to cleanly separate pinned requirements for
+"""Use new pip install --report flag to separate pinned requirements for
 different optional dependencies (e.g. 'dev' and 'doc' requirements)."""
 
 import argparse
 import subprocess
 import shutil
 import sys
+import json
 from typing import Optional, Final, Union
 from pathlib import Path
 
@@ -36,6 +37,8 @@ def read_toml(
     """
     with open(toml_file, "rb") as f:
         metadata = tomllib.load(f)
+    if not metadata.get("project"):
+        sys.exit("File does not contain a 'project' section")
     dependencies: list[str] = metadata["project"].get("dependencies")
     if optional_dependency:
         if metadata["project"].get("optional-dependencies"):
@@ -177,6 +180,61 @@ def run_pip_freeze(
         sys.exit("There are no dependencies to pin")
 
 
+def pip222_pin(
+    python_exec: Path,
+    toml_dependencies: Optional[list[str]],
+    requirements_in: Optional[Path],
+    output_file: Path,
+    install_args: Optional[list[str]],
+) -> None:
+    """Pin packages with --report flag introduced in pip 22.2."""
+    pip_report_command: list[Union[str, Path]] = [
+        "env",
+        "PIP_REQUIRE_VIRTUALENV=false",
+        python_exec,
+        "-m",
+        "pip",
+        "install",
+    ]
+    # If install_args have been provided, inject them after the 'install' keyword
+    if install_args:
+        pip_report_command.extend(install_args)
+    # Add necessary flags for calling pip install report
+    pip_report_command.extend(
+        ["-q", "--dry-run", "--ignore-installed", "--report", "-"]
+    )
+    # Finally, either append dependencies from TOML file or '-r requirements-file'
+    if toml_dependencies:
+        pip_report_command.extend([dependency for dependency in toml_dependencies])
+    elif requirements_in:
+        pip_report_command.extend(["-r", requirements_in])
+    run_pip_report(pip_report_command, output_file)
+
+
+def run_pip_report(
+    pip_report_command: list[Union[Path, str]], output_file: Path
+) -> None:
+    """Run pip report and save output to file."""
+    try:
+        pip_report_raw_output: bytes = subprocess.check_output(pip_report_command)
+        pip_report = json.loads(pip_report_raw_output.decode("utf-8"))
+        if pip_report.get("install"):
+            pinned_packages: Optional[list[str]] = []
+            for package in pip_report.get("install"):
+                package_name: str = package["metadata"]["name"]
+                package_version: str = package["metadata"]["version"]
+                pinned_packages.append(f"{package_name}=={package_version}")
+            # Sort pinned packages alphabetically before writing to file
+            pinned_packages.sort(key=str.lower)
+            with open(output_file, "w") as f:
+                f.writelines(f"{package}\n" for package in pinned_packages)
+        else:
+            sys.exit("There are no dependencies to pin")
+    except subprocess.CalledProcessError as error:
+        error.output
+        sys.exit()
+
+
 def determine_default_file() -> Optional[Path]:
     """Determine default input file if none has been specified.
 
@@ -195,9 +253,8 @@ def determine_default_file() -> Optional[Path]:
 def parse_args() -> argparse.Namespace:
     """Parse arguments."""
     argparser = argparse.ArgumentParser(
-        description="Call pip freeze in isolated venv to cleanly separate pinned "
-        "requirements for different optional dependencies (e.g. 'dev' and 'doc' "
-        "requirements)."
+        description="Use pip install --report to cleanly separate pinned requirements "
+        "for different optional dependencies (e.g. 'dev' and 'doc' requirements)."
     )
     argparser.add_argument(
         "file",
@@ -243,7 +300,14 @@ def parse_args() -> argparse.Namespace:
         "--verbose",
         "-v",
         action="store_true",
-        help="Show all output from pip install and pip freeze.",
+        help="Show all output from pip install and pip freeze (only applies "
+        "when --venv flag is set).",
+    )
+    argparser.add_argument(
+        "--venv",
+        action="store_true",
+        help="Resolve dependencies by installing them in isolated venv instead of "
+        "using pip install --report.",
     )
     args = argparser.parse_args()
     if not args.file:
@@ -268,26 +332,35 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     arguments: argparse.Namespace = parse_args()
-    create_venv(arguments.python)
     if arguments.file.suffix == ".toml":
         dependencies: Optional[list[str]] = read_toml(
             arguments.file, arguments.dependency
         )
     else:
         dependencies = None
-    install_packages(
-        dependencies=dependencies,
-        requirements_in=arguments.file,
-        install_args=arguments.install_args,
-        verbose=arguments.verbose,
-    )
-    freeze_packages(
-        output_file=arguments.output,
-        input_file=arguments.file,
-        freeze_args=arguments.freeze_args,
-        verbose=arguments.verbose,
-    )
-    shutil.rmtree(TEMP_VENV)
+    if not arguments.venv:
+        pip222_pin(
+            python_exec=arguments.python,
+            toml_dependencies=dependencies,
+            requirements_in=arguments.file,
+            output_file=arguments.output,
+            install_args=arguments.install_args,
+        )
+    else:
+        create_venv(arguments.python)
+        install_packages(
+            toml_dependencies=dependencies,
+            requirements_in=arguments.file,
+            install_args=arguments.install_args,
+            verbose=arguments.verbose,
+        )
+        freeze_packages(
+            output_file=arguments.output,
+            input_file=arguments.file,
+            freeze_args=arguments.freeze_args,
+            verbose=arguments.verbose,
+        )
+        shutil.rmtree(TEMP_VENV)
     print(f"Pinned specified requirements in {arguments.output}")
 
 
