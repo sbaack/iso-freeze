@@ -1,8 +1,12 @@
-# iso-freeze: Call pip freeze in an isolated venv
+# iso-freeze: Use `pip install --report` to separate pinned requirements for different optional dependencies
 
-`pip freeze` will always pin everything installed in your current venv, so if you want to pin only your `doc` but not your `dev` requirements, you best create a fresh environment. `iso-freeze` allows you to pin requirements independently from your current environment: you just specify a `requirements` file or dependencies in your `pyproject.toml` and it automatically creates a temporary venv, installs all necessary requirements in it and generates pinned `*requirements.txt` files from it.
+**Warning**: The `--report` option of `pip install` is considered experimental. Expect stuff to break after pip updates.
 
-`iso-freeze` is a very simple version of the `pip-compile` command provided by [`pip-tools`](https://github.com/jazzband/pip-tools). The biggest difference is that is `iso-freeze` does not rely on any `pip` internals and just calls plain `pip freeze` in the background.
+`pip 22.2` introduced the [`pip install --report`](https://pip.pypa.io/en/latest/reference/installation-report/) option, which together with the `--dry-run` and `--ignore-installed` options can be used to resolve requirements without installing them. While the classic `pip freeze` always pins everything installed, this makes it possible to pin requirements independently from your current environment.
+
+`iso-freeze` is an experimental application that uses these new `pip` options to pin requirements. Just specify a `requirements` file or dependencies in your `pyproject.toml` and it uses the output of `pip install --report` to generate pinned `*requirements.txt` files.
+
+This makes `iso-freeze` a very simple version of the `pip-compile` command provided by [`pip-tools`](https://github.com/jazzband/pip-tools). The biggest difference is that is `iso-freeze` does not rely on any `pip` internals.
 
 ## Install
 
@@ -60,15 +64,23 @@ iso-freeze pyproject.toml -p python3.11 -o 311-requirements.txt
 iso-freeze pyproject.toml -p /Library/Frameworks/Python.framework/Versions/3.11/bin/python -o 311-requirements.txt
 ```
 
-## Passing arguments to pip
-
-You can pass arguments directly to `pip install` and `pip freeze` with the `--install-args` and `freeze-args` flags:
+You can pass arguments directly to `pip install` with the `--pip-args` flag:
 
 ```bash
-iso-freeze dev-requirements.in --install-args "--upgrade-strategy eager --require-hashes"
-iso-freeze pyproject.toml --freeze-args "--exclude cowsay"
-# Or both
-iso-freeze dev-requirements.in --install-args "--upgrade-strategy eager" --freeze-args "--exclude cowsay"
+iso-freeze dev-requirements.in --pip-args "--upgrade-strategy eager --require-hashes"
 ```
 
-Please note that `iso-freeze` will call `pip freeze` with the `-r <requiements-file>` flag by default if a requirements file is used as input _unless_ you pass the `--exclude <package>` flag via `--freeze-args`. If both the `-r <requirements-file>` and the `--exclude` flags are used, the `--exclude` flag might be negated if the excluded package is explicitly mentioned in the specified requirements file. To avoid unexpected outcomes, `iso-freeze` won't add any additional flags if `--exclude` is passed to `pip freeze` via `--freeze-args`.
+Please note that by default, `iso-freeze` calls `pip` as follows:
+
+```bash
+# If dependencies come from pyproject.toml 
+env PIP_REQUIRE_VIRTUALENV=false python_exec -m pip install -q --dry-run --ignore-installed --report - package1 package2
+# If dependencies come from a requirements file
+env PIP_REQUIRE_VIRTUALENV=false python_exec -m pip install -q --dry-run --ignore-installed --report - -r requirements_file
+```
+
+`env PIP_REQUIRE_VIRTUALENV=false` is set to ensure that this command will not fail if `require-virtualenv = true` is set in `pip.conf`. Arguments added with `--pip-args` will be injected after the `install` keyword. Example: Calling `iso-freeze dev-requirements.in --pip-args "--upgrade-strategy eager"` will result in the following command:
+
+```bash
+env PIP_REQUIRE_VIRTUALENV=false python_exec -m pip install --upgrade-strategy eager -q --dry-run --ignore-installed --report - -r dev-requirements.in
+```
