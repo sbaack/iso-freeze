@@ -56,7 +56,7 @@ To pin requirements from a different `*requirements.in` file, simply specify it:
 iso-freeze requirements/dev-requirements.in -o requirements/dev-requirements.txt
 ```
 
-By default, `iso-freeze` will use whatever Python interpreter is currently activate in your shell by calling `python3 -m venv` to create the temporary venv from which to install and pin your requirements. If you need a different version of Python, you can specify it with the `--python/-p` flag:
+By default, `iso-freeze` will use whatever Python interpreter is currently activate in your shell by calling `python3 -m pip install`. If you need a different version of Python, you can specify it with the `--python/-p` flag:
 
 ```bash
 iso-freeze pyproject.toml -p python3.11 -o 311-requirements.txt
