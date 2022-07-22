@@ -82,5 +82,5 @@ env PIP_REQUIRE_VIRTUALENV=false python_exec -m pip install -q --dry-run --ignor
 `env PIP_REQUIRE_VIRTUALENV=false` is set to ensure that this command will not fail if `require-virtualenv = true` is set in `pip.conf`. Arguments added with `--pip-args` will be injected after the `install` keyword. Example: Calling `iso-freeze dev-requirements.in --pip-args "--upgrade-strategy eager"` will result in the following command:
 
 ```bash
-env PIP_REQUIRE_VIRTUALENV=false python_exec -m pip install --upgrade-strategy eager -q --dry-run --ignore-installed --report - -r dev-requirements.in
+env PIP_REQUIRE_VIRTUALENV=false python3 -m pip install --upgrade-strategy eager -q --dry-run --ignore-installed --report - -r dev-requirements.in
 ```
