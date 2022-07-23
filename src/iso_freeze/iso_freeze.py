@@ -90,33 +90,56 @@ def build_pip_command(
 
 
 def run_pip_report(
-    pip_report_command: list[Union[Path, str]], output_file: Path
-) -> None:
+    pip_report_command: list[Union[Path, str]]
+) -> Optional[list[dict[str]]]:
     """Capture pip install --report to generate pinned requirements.
 
     Arguments:
         pip_report_command -- Command for subprocess (list[Union[Path, str]])
-        output_file -- Path to and name of requirements.txt file (Path)
     """
     try:
         pip_report_raw_output: bytes = subprocess.check_output(pip_report_command)
         pip_report = json.loads(pip_report_raw_output.decode("utf-8"))
         if pip_report.get("install"):
-            pinned_packages: list[str] = []
-            for package in pip_report.get("install"):
-                package_name: str = package["metadata"]["name"]
-                package_version: str = package["metadata"]["version"]
-                pinned_packages.append(f"{package_name}=={package_version}")
-            # Sort pinned packages alphabetically before writing to file
-            # (case-insensitively thanks to key=str.lower)
-            pinned_packages.sort(key=str.lower)
-            with open(output_file, "w") as f:
-                f.writelines(f"{package}\n" for package in pinned_packages)
+            return pip_report.get("install")
         else:
-            sys.exit("There are no dependencies to pin")
+            return None
     except subprocess.CalledProcessError as error:
         error.output
         sys.exit()
+
+
+def write_requirements_file(dependencies: list[dict[str]], output_file: Path) -> None:
+    """Write requirements file.
+
+    Display top level dependencies on top, similar to pip freeze -r requirements_file.
+
+    Keyword Arguments:
+        dependencies -- Dependencies listed in pip install --report (list[dict[str]])
+        output_file -- Path to and name of requirements.txt file (Path)
+    """
+    # For easier formatting we create separate lists for top level requirements
+    # and their dependencies
+    top_level_requirements: list[str] = []
+    dependency_requirements: list[Optional[str]] = []
+    for package in dependencies:
+        package_name: str = package["metadata"]["name"]
+        package_version: str = package["metadata"]["version"]
+        # If requested == True, the package is a top level requirement
+        if package["requested"]:
+            top_level_requirements.append(f"{package_name}=={package_version}")
+        else:
+            dependency_requirements.append(f"{package_name}=={package_version}")
+    with open(output_file, "w") as f:
+        # Sort pinned packages alphabetically before writing to file
+        # (case-insensitively thanks to key=str.lower)
+        top_level_requirements.sort(key=str.lower)
+        f.write("# Top level requirements\n")
+        f.writelines(f"{package}\n" for package in top_level_requirements)
+        if dependency_requirements:
+            dependency_requirements.sort(key=str.lower)
+            f.write("# Dependencies of top level requirements\n")
+            f.writelines(f"{package}\n" for package in dependency_requirements)
 
 
 def determine_default_file() -> Optional[Path]:
@@ -235,7 +258,11 @@ def main() -> None:
         requirements_in=arguments.file,
         pip_args=arguments.pip_args,
     )
-    run_pip_report(pip_report_command, arguments.output)
+    dependencies = run_pip_report(pip_report_command=pip_report_command)
+    if dependencies:
+        write_requirements_file(dependencies=dependencies, output_file=arguments.output)
+    else:
+        sys.exit("There are no dependencies to pin")
     print(f"Pinned specified requirements in {arguments.output}")
 
 
