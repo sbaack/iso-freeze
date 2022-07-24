@@ -5,6 +5,7 @@ import argparse
 import subprocess
 import sys
 import json
+from dataclasses import dataclass
 from typing import Optional, Union
 from pathlib import Path
 
@@ -12,6 +13,15 @@ if sys.version_info >= (3, 11, 0):
     import tomllib
 else:
     import tomli as tomllib  # type: ignore
+
+
+@dataclass
+class PyPackage:
+    """Class to capture relevant information about Python packages."""
+
+    name: str
+    version: str
+    requested: bool = False
 
 
 def read_toml(
@@ -91,17 +101,29 @@ def build_pip_command(
 
 def run_pip_report(
     pip_report_command: list[Union[Path, str]]
-) -> Optional[list[dict[str]]]:
+) -> Optional[list[PyPackage]]:
     """Capture pip install --report to generate pinned requirements.
 
     Arguments:
         pip_report_command -- Command for subprocess (list[Union[Path, str]])
+
+    Returns:
+        List of PyPackage objects containing infos to pin requirements (list[PyPackage])
     """
     try:
         pip_report_raw_output: bytes = subprocess.check_output(pip_report_command)
         pip_report = json.loads(pip_report_raw_output.decode("utf-8"))
         if pip_report.get("install"):
-            return pip_report.get("install")
+            dependencies: list[PyPackage] = []
+            for package in pip_report["install"]:
+                dependencies.append(
+                    PyPackage(
+                        name=package["metadata"]["name"],
+                        version=package["metadata"]["version"],
+                        requested=package["requested"],
+                    )
+                )
+            return dependencies
         else:
             return None
     except subprocess.CalledProcessError as error:
@@ -109,7 +131,7 @@ def run_pip_report(
         sys.exit()
 
 
-def write_requirements_file(dependencies: list[dict[str]], output_file: Path) -> None:
+def write_requirements_file(dependencies: list[PyPackage], output_file: Path) -> None:
     """Write requirements file.
 
     Display top level dependencies on top, similar to pip freeze -r requirements_file.
@@ -123,13 +145,11 @@ def write_requirements_file(dependencies: list[dict[str]], output_file: Path) ->
     top_level_requirements: list[str] = []
     dependency_requirements: list[Optional[str]] = []
     for package in dependencies:
-        package_name: str = package["metadata"]["name"]
-        package_version: str = package["metadata"]["version"]
         # If requested == True, the package is a top level requirement
-        if package["requested"]:
-            top_level_requirements.append(f"{package_name}=={package_version}")
+        if package.requested:
+            top_level_requirements.append(f"{package.name}=={package.version}")
         else:
-            dependency_requirements.append(f"{package_name}=={package_version}")
+            dependency_requirements.append(f"{package.name}=={package.version}")
     with open(output_file, "w") as f:
         # Sort pinned packages alphabetically before writing to file
         # (case-insensitively thanks to key=str.lower)
@@ -258,7 +278,9 @@ def main() -> None:
         requirements_in=arguments.file,
         pip_args=arguments.pip_args,
     )
-    dependencies = run_pip_report(pip_report_command=pip_report_command)
+    dependencies: list[PyPackage] = run_pip_report(
+        pip_report_command=pip_report_command
+    )
     if dependencies:
         write_requirements_file(dependencies=dependencies, output_file=arguments.output)
     else:
