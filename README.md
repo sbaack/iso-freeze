@@ -4,9 +4,9 @@
 
 `pip 22.2` introduced the [`pip install --report`](https://pip.pypa.io/en/latest/reference/installation-report/) option, which together with the `--dry-run` and `--ignore-installed` options can be used to resolve requirements without installing them. While the classic `pip freeze` always pins everything installed, this makes it possible to pin requirements independently from your current environment.
 
-`iso-freeze` is an experimental application that uses these new `pip` options to pin requirements. Just specify a `requirements` file or dependencies in your `pyproject.toml` and it uses the output of `pip install --report` to generate pinned `*requirements.txt` files.
+`iso-freeze` is an experimental application that uses these new `pip` options to pin requirements. Just specify a `requirements` file or dependencies in your `pyproject.toml` and it uses the output of `pip install --report` to generate pinned `*requirements.txt` files. You can also sync packages installed in your virtual environment with the output of `pip install report`.
 
-This makes `iso-freeze` a very simple version of the `pip-compile` command provided by [`pip-tools`](https://github.com/jazzband/pip-tools). The biggest difference is that is `iso-freeze` does not rely on any `pip` internals.
+This makes `iso-freeze` a very simple version of the `pip-compile` and `pip-sync` commands provided by [`pip-tools`](https://github.com/jazzband/pip-tools). The biggest difference is that is `iso-freeze` does not rely on any `pip` internals.
 
 ## Install
 
@@ -33,7 +33,14 @@ iso-freeze
 # OR `iso-freeze pyproject.toml` if you like to be explicit
 ```
 
-Afterwards, your pinned requirements are stored in `requirements.txt`.
+Afterwards, your pinned requirements are stored in `requirements.txt`:
+
+```
+# Top level requirements
+iso-freeze==0.0.11
+# Dependencies of top level requirements
+tomli==2.0.1
+```
 
 If you would like to pin requirements for a specific optional dependency listed in your `pyproject.toml` file, say `dev` dependencies, you can specify it with the `-d/--dependency` flag. Ideally you will use it in combination with the `-o/--output` flag to specify the name and location of the file you want to store the pinned requirements in:
 
@@ -87,13 +94,13 @@ env PIP_REQUIRE_VIRTUALENV=false python3 -m pip install --upgrade-strategy eager
 
 ### Sync
 
-You can also sync your current environment with the output of `pip install --report` with the `--sync/-s` flag:
+With the `--sync/-s` flag, `iso-freeze` syncs your current environment with the output of `pip install --report`:
 
 ```bash
 iso-freeze pyproject.toml -d dev --sync
 ```
 
-This will remove any packages that are not dependencies of `dev` and install/update all your packages to match the exact versions provided in the `pip install --report` output.
+This will remove any packages that are not dependencies of `dev`, install missing packages and update existing packages to match the exact versions provided in the `pip install --report` output.
 
 **Warning**: Be careful when combining the `--sync` and `--python` options. For example:
 
@@ -101,6 +108,25 @@ This will remove any packages that are not dependencies of `dev` and install/upd
 iso-freeze pyproject.toml -d dev --sync --python python3.11
 ```
 
-This command would install your dependencies globally! If used in combination with `--sync`, the `--python` flag should point to the executable of a virtual environment. Using the `--sync` while not in any virtual environment will install packages globally too. For security, consider adding `require-virtualenv = true` to your [pip configuration](https://pip.pypa.io/en/stable/topics/configuration/?highlight=require-virtualenv#configuration-files).
+This command would install your dependencies globally! If used in combination with `--sync`, the `--python` flag should point to the executable of a virtual environment. Using the `--sync` flag while not in any virtual environment will install packages globally too. For security, consider adding `require-virtualenv = true` to your [pip configuration](https://pip.pypa.io/en/stable/topics/configuration/?highlight=require-virtualenv#configuration-files).
 
 Note that `--sync` ignores editable installs.
+
+### Hashes
+
+`iso-freeze` has limited support for adding hashes because `pip install --report` only provides one hash for the exact file used to install a package on your system. You can include hashes with the `--hashes` flag:
+
+```bash
+iso-freeze pyproject.toml -d dev --hashes
+```
+
+This creates an output like this (truncated example):
+
+```
+# Top level requirements
+pytest==7.1.2 \
+    --hash=sha256:13d0e3ccfc2b6e26be000cb6568c832ba67ba32e719443bfe725814d3c42433c
+# Dependencies of top level requirements
+attrs==21.4.0 \
+    --hash=sha256:2d27e3784d7a565d36ab851fe94887c5eccd6a463168875832a1be79c82828b4
+```

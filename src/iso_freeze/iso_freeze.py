@@ -22,6 +22,7 @@ class PyPackage:
     name: str
     version: str
     requested: bool = False
+    hash: Optional[str] = None
 
 
 def read_toml(
@@ -144,6 +145,11 @@ def get_dependencies(
                     name=package["metadata"]["name"],
                     version=package["metadata"]["version"],
                     requested=package["requested"],
+                    # pip report provides hashes in the form 'sha256=<hash>', but pip
+                    # install requires 'sha256:<hash>', so we replace '=' with ':'
+                    hash=package["download_info"]["archive_info"]["hash"].replace(
+                        "=", ":"
+                    ),
                 )
             )
         return dependencies
@@ -216,51 +222,67 @@ def install_pip_report_output(to_install: list[PyPackage], python_exec: Path) ->
     """
     # Create list in the format ["package1==versionX", "package2==versionY"]
     # from `pip install --report` and pass that to `pip install`
-    to_install_with_versions: list[str] = [
+    pinned_versions: list[str] = [
         f"{package.name}=={package.version}" for package in to_install
     ]
     run_pip(
-        command=[
-            python_exec,
-            "-m",
-            "pip",
-            "install",
-            "--upgrade",
-            *to_install_with_versions,
-        ],
+        command=[python_exec, "-m", "pip", "install", "--upgrade", *pinned_versions],
         check_output=False,
     )
 
 
-def write_requirements_file(dependencies: list[PyPackage], output_file: Path) -> None:
-    """Write requirements file.
+def build_reqirements_file_contents(
+    dependencies: list[PyPackage], hashes: bool
+) -> None:
+    """Build lists to be written to a requirements file.
 
     Display top level dependencies on top, similar to pip freeze -r requirements_file.
 
-    Keyword Arguments:
+    Arguments:
         dependencies -- Dependencies listed in pip install --report (list[dict[str]])
-        output_file -- Path to and name of requirements.txt file (Path)
+        hashes -- Whether to include hashes (bool)
+
+    Returns:
+        Contents of requirements file (list[str])
     """
     # For easier formatting we create separate lists for top level requirements
     # and their dependencies
     top_level_requirements: list[str] = []
     dependency_requirements: list[str] = []
     for package in dependencies:
+        pinned_format: str = f"{package.name}=={package.version}"
+        if hashes:
+            pinned_format += f" \\\n    --hash={package.hash}"
         # If requested == True, the package is a top level requirement
         if package.requested:
-            top_level_requirements.append(f"{package.name}=={package.version}")
+            top_level_requirements.append(pinned_format)
         else:
-            dependency_requirements.append(f"{package.name}=={package.version}")
-    with open(output_file, "w") as f:
-        # Sort pinned packages alphabetically before writing to file
-        # (case-insensitively thanks to key=str.lower)
-        top_level_requirements.sort(key=str.lower)
-        f.write("# Top level requirements\n")
-        f.writelines(f"{package}\n" for package in top_level_requirements)
-        if dependency_requirements:
-            dependency_requirements.sort(key=str.lower)
-            f.write("# Dependencies of top level requirements\n")
-            f.writelines(f"{package}\n" for package in dependency_requirements)
+            dependency_requirements.append(pinned_format)
+    # Sort pinned packages alphabetically before writing to file
+    # (case-insensitively thanks to key=str.lower)
+    top_level_requirements.sort(key=str.lower)
+    # Combine lists and add comments
+    requirements_file_content: list[str] = [
+        "# Top level requirements",
+        *top_level_requirements,
+    ]
+    if dependency_requirements:
+        dependency_requirements.sort(key=str.lower)
+        requirements_file_content.extend(
+            ["# Dependencies of top level requirements", *dependency_requirements]
+        )
+    return requirements_file_content
+
+
+def write_requirements_file(output_file: Path, file_contents: list[str]) -> None:
+    """Write requirements file.
+
+    Arguments:
+        output_file -- Path to and name of requirements.txt file (Path)
+        file_contents -- Contents to to written to a file (list[str])
+    """
+    with output_file.open(mode="w", encoding="utf=8") as f:
+        f.writelines(f"{package}\n" for package in file_contents)
 
 
 def determine_default_file() -> Optional[Path]:
@@ -316,7 +338,7 @@ def parse_args() -> argparse.Namespace:
         "--pip-args",
         type=str,
         help="List of arguments to be passed to pip install. Call as: "
-        'pip-args "--arg1 value --arg2 value"',
+        'pip-args "--arg1 value --arg2 value".',
     )
     argparser.add_argument(
         "--sync",
@@ -324,6 +346,9 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Sync current environment with dependencies listed in file (removes "
         "packages that are not dependencies in file, adds those that are missing)",
+    )
+    argparser.add_argument(
+        "--hashes", action="store_true", help="Add hashes to output file."
     )
     args = argparser.parse_args()
     if not args.file:
@@ -393,11 +418,15 @@ def main() -> None:
                 python_exec=arguments.python,
             )
             install_pip_report_output(
-                to_install=dependencies, python_exec=arguments.python
+                to_install=dependencies,
+                python_exec=arguments.python,
             )
         else:
+            output_file_contents: list[str] = build_reqirements_file_contents(
+                dependencies=dependencies, hashes=arguments.hashes
+            )
             write_requirements_file(
-                dependencies=dependencies, output_file=arguments.output
+                output_file=arguments.output, file_contents=output_file_contents
             )
             print(f"Pinned specified requirements in {arguments.output}")
     else:

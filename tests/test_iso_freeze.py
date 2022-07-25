@@ -183,6 +183,7 @@ def test_remove_additional_packages(mocker):
 
 def test_get_installed_packages(mocker):
     """Test if pip list output correctly parsed."""
+    mocker.patch("iso_freeze.iso_freeze.run_pip")
     mocked_pip_list_output = [
         {"name": "attrs", "version": "21.4.0"},
         {"name": "iniconfig", "version": "1.1.1"},
@@ -195,6 +196,7 @@ def test_get_installed_packages(mocker):
         {"name": "pip", "version": "22.2"},
         {"name": "pluggy", "version": "1.0.0"},
     ]
+    # TODO: Hashes?
     expected_output = [
         PyPackage(name="attrs", version="21.4.0", requested=False),
         PyPackage(name="iniconfig", version="1.1.1", requested=False),
@@ -241,7 +243,7 @@ def test_get_dependencies(mocker):
         "install": [
             {
                 "download_info": {
-                    "archive_info": {"hash": "some_hash"},
+                    "archive_info": {"hash": "sha256=some_hash"},
                     "url": "some_url",
                 },
                 "is_direct": False,
@@ -265,7 +267,14 @@ def test_get_dependencies(mocker):
         "pip_version": "22.2",
         "version": "0",
     }
-    expected_result = [PyPackage(name="cool_package", version="2.0.1", requested=True)]
+    expected_result = [
+        PyPackage(
+            name="cool_package",
+            version="2.0.1",
+            requested=True,
+            hash="sha256:some_hash",
+        )
+    ]
     mocker.patch("json.loads", return_value=mocked_pip_report_output)
     mocked_pip_report_command = [
         "env",
@@ -283,3 +292,40 @@ def test_get_dependencies(mocker):
     ]
     actual_result = iso_freeze.get_dependencies(mocked_pip_report_command)
     assert actual_result == expected_result
+    mocked_pip_report_output_no_install = {
+        "environment": {},
+        "install": [],
+        "pip_version": "22.2",
+        "version": "0",
+    }
+    mocker.patch("json.loads", return_value=mocked_pip_report_output_no_install)
+    expected_result = None
+    actual_result = iso_freeze.get_dependencies(mocked_pip_report_command)
+    assert actual_result == expected_result
+
+
+
+def test_build_reqirements_file_contents():
+    """Test if requirements file contents are correctly build."""
+    mocked_dependencies = [
+        PyPackage(name="tomli", version="2.0.1", requested=True, hash="sha256:1234"),
+        PyPackage(name="pyjokes", version="0.6.0", requested=False, hash="sha256:5678"),
+    ]
+    expected_output_no_hashes = [
+        "# Top level requirements",
+        "tomli==2.0.1",
+        "# Dependencies of top level requirements",
+        "pyjokes==0.6.0",
+    ]
+    actual_output_no_hashes = iso_freeze.build_reqirements_file_contents(dependencies=mocked_dependencies, hashes=False)
+    assert expected_output_no_hashes == actual_output_no_hashes
+    expected_output_hashes = [
+        "# Top level requirements",
+        "tomli==2.0.1 \\\n"
+        "    --hash=sha256:1234",
+        "# Dependencies of top level requirements",
+        "pyjokes==0.6.0 \\\n"
+        "    --hash=sha256:5678"
+    ]
+    actual_output_hashes = iso_freeze.build_reqirements_file_contents(dependencies=mocked_dependencies, hashes=True)
+    assert expected_output_hashes == actual_output_hashes
