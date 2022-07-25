@@ -235,6 +235,7 @@ def test_install_pip_report_output(mocker):
 
 def test_get_dependencies(mocker):
     """Test if pip install --report is correctly captured."""
+    mocker.patch("iso_freeze.iso_freeze.run_pip")
     mocked_pip_report_output = {
         "environment": {},
         "install": [
