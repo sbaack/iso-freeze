@@ -6,7 +6,7 @@ import subprocess
 import sys
 import json
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Any, Optional, Union
 from pathlib import Path
 
 if sys.version_info >= (3, 11, 0):
@@ -59,7 +59,7 @@ def read_toml(
     return dependencies
 
 
-def build_pip_command(
+def build_pip_report_command(
     python_exec: Path,
     toml_dependencies: Optional[list[str]],
     requirements_in: Optional[Path],
@@ -99,8 +99,31 @@ def build_pip_command(
     return pip_report_command
 
 
-def run_pip_report(
-    pip_report_command: list[Union[Path, str]]
+def run_pip(command: list[Union[str, Path]], check_output: bool) -> Any:
+    """Run specified pip command with subprocess and return results, if any.
+
+    Arguments:
+        command -- pip command to execute (list[Union[str, Path]])
+
+    Keyword Arguments:
+        check_output -- Whether to call subprocess.check_output (default: {False})
+
+    Returns:
+        Output of pip command, if any (Optional[Any])
+    """
+    try:
+        if check_output:
+            return subprocess.check_output(command, encoding="utf-8")
+        else:
+            subprocess.run(command)
+            return None
+    except subprocess.CalledProcessError as error:
+        error.output
+        sys.exit()
+
+
+def get_dependencies(
+    pip_report_command: list[Union[Path, str]],
 ) -> Optional[list[PyPackage]]:
     """Capture pip install --report to generate pinned requirements.
 
@@ -110,25 +133,103 @@ def run_pip_report(
     Returns:
         List of PyPackage objects containing infos to pin requirements (list[PyPackage])
     """
-    try:
-        pip_report_raw_output: bytes = subprocess.check_output(pip_report_command)
-        pip_report = json.loads(pip_report_raw_output.decode("utf-8"))
-        if pip_report.get("install"):
-            dependencies: list[PyPackage] = []
-            for package in pip_report["install"]:
-                dependencies.append(
-                    PyPackage(
-                        name=package["metadata"]["name"],
-                        version=package["metadata"]["version"],
-                        requested=package["requested"],
-                    )
+    pip_report: dict[str, Any] = json.loads(
+        run_pip(command=pip_report_command, check_output=True)
+    )
+    if pip_report.get("install"):
+        dependencies: list[PyPackage] = []
+        for package in pip_report["install"]:
+            dependencies.append(
+                PyPackage(
+                    name=package["metadata"]["name"],
+                    version=package["metadata"]["version"],
+                    requested=package["requested"],
                 )
-            return dependencies
-        else:
-            return None
-    except subprocess.CalledProcessError as error:
-        error.output
-        sys.exit()
+            )
+        return dependencies
+    else:
+        return None
+
+
+def get_installed_packages(python_exec: Path) -> list[PyPackage]:
+    """Run pip list --format json and return packages.
+
+    Returns:
+        List of packages from current environment (list[PyPackage])
+    """
+    pip_list_output: list[dict[str, str]] = json.loads(
+        run_pip(
+            command=[
+                python_exec,
+                "-m",
+                "pip",
+                "list",
+                "--format",
+                "json",
+                "--exclude-editable",
+            ],
+            check_output=True,
+        )
+    )
+    installed_packages: list[PyPackage] = []
+    for package in pip_list_output:
+        installed_packages.append(
+            PyPackage(name=package["name"], version=package["version"])
+        )
+    return installed_packages
+
+
+def remove_additional_packages(
+    installed_packages: list[PyPackage], to_install: list[PyPackage], python_exec: Path
+) -> None:
+    """Remove packages installed in environment but not included in pip install --report.
+
+    Arguments:
+        installed_packages -- List of packages installed in current environment
+                              (list[PyPackage])
+        to_install -- List of packages taken from pip install --report
+        python_exec -- Path to Python executable (Path)
+    """
+    # Create two lists with packages names only for easy comparison
+    installed_names_only: list[str] = [package.name for package in installed_packages]
+    to_install_names_only: list[str] = [package.name for package in to_install]
+    to_delete: list[str] = [
+        package
+        for package in installed_names_only
+        if package not in to_install_names_only
+        # Don't remove default packages
+        if package not in ["pip", "setuptools"]
+    ]
+    if to_delete:
+        run_pip(
+            command=[python_exec, "-m", "pip", "uninstall", "-y", *to_delete],
+            check_output=False,
+        )
+
+
+def install_pip_report_output(to_install: list[PyPackage], python_exec: Path) -> None:
+    """Install packages with pinned versions from pip install --report output.
+
+    Arguments:
+        to_install -- List of packages taken from pip install --report
+        python_exec -- Path to Python executable (Path)
+    """
+    # Create list in the format ["package1==versionX", "package2==versionY"]
+    # from `pip install --report` and pass that to `pip install`
+    to_install_with_versions: list[str] = [
+        f"{package.name}=={package.version}" for package in to_install
+    ]
+    run_pip(
+        command=[
+            python_exec,
+            "-m",
+            "pip",
+            "install",
+            "--upgrade",
+            *to_install_with_versions,
+        ],
+        check_output=False,
+    )
 
 
 def write_requirements_file(dependencies: list[PyPackage], output_file: Path) -> None:
@@ -143,7 +244,7 @@ def write_requirements_file(dependencies: list[PyPackage], output_file: Path) ->
     # For easier formatting we create separate lists for top level requirements
     # and their dependencies
     top_level_requirements: list[str] = []
-    dependency_requirements: list[Optional[str]] = []
+    dependency_requirements: list[str] = []
     for package in dependencies:
         # If requested == True, the package is a top level requirement
         if package.requested:
@@ -217,6 +318,13 @@ def parse_args() -> argparse.Namespace:
         help="List of arguments to be passed to pip install. Call as: "
         'pip-args "--arg1 value --arg2 value"',
     )
+    argparser.add_argument(
+        "--sync",
+        "-s",
+        action="store_true",
+        help="Sync current environment with dependencies listed in file (removes "
+        "packages that are not dependencies in file, adds those that are missing)",
+    )
     args = argparser.parse_args()
     if not args.file:
         sys.exit(
@@ -242,24 +350,20 @@ def validate_pip_version(python_exec: Path) -> bool:
     Returns:
         True/False (bool)
     """
-    try:
-        pip_version_call: str = subprocess.check_output(
-            [python_exec, "-m", "pip", "--version"], encoding="utf-8"
-        )
-        # Output of pip --version looks like this:
-        # pip 22.2 from <path to pip> (<python version>)
-        # To get version number, split this message on whitespace and pick list item 1.
-        # To check against minimum version, turn the version number into a list of ints
-        # (e.g. '[22, 2]' or '[21, 1, 2]')
-        pip_version: list[int] = [
-            int(number) for number in pip_version_call.split()[1].split(".")
-        ]
-        if pip_version >= [22, 2]:
-            return True
-        return False
-    except subprocess.CalledProcessError as error:
-        error.output
-        sys.exit()
+    pip_version_call: str = run_pip(
+        command=[python_exec, "-m", "pip", "--version"], check_output=True
+    )
+    # Output of pip --version looks like this:
+    # pip 22.2 from <path to pip> (<python version>)
+    # To get version number, split this message on whitespace and pick list item 1.
+    # To check against minimum version, turn the version number into a list of ints
+    # (e.g. '[22, 2]' or '[21, 1, 2]')
+    pip_version: list[int] = [
+        int(number) for number in pip_version_call.split()[1].split(".")
+    ]
+    if pip_version >= [22, 2]:
+        return True
+    return False
 
 
 def main() -> None:
@@ -272,20 +376,32 @@ def main() -> None:
         )
     else:
         toml_dependencies = None
-    pip_report_command: list[Union[str, Path]] = build_pip_command(
+    pip_report_command: list[Union[str, Path]] = build_pip_report_command(
         python_exec=arguments.python,
         toml_dependencies=toml_dependencies,
         requirements_in=arguments.file,
         pip_args=arguments.pip_args,
     )
-    dependencies: list[PyPackage] = run_pip_report(
+    dependencies: Optional[list[PyPackage]] = get_dependencies(
         pip_report_command=pip_report_command
     )
     if dependencies:
-        write_requirements_file(dependencies=dependencies, output_file=arguments.output)
+        if arguments.sync:
+            remove_additional_packages(
+                installed_packages=get_installed_packages(python_exec=arguments.python),
+                to_install=dependencies,
+                python_exec=arguments.python,
+            )
+            install_pip_report_output(
+                to_install=dependencies, python_exec=arguments.python
+            )
+        else:
+            write_requirements_file(
+                dependencies=dependencies, output_file=arguments.output
+            )
+            print(f"Pinned specified requirements in {arguments.output}")
     else:
         sys.exit("There are no dependencies to pin")
-    print(f"Pinned specified requirements in {arguments.output}")
 
 
 if __name__ == "__main__":
