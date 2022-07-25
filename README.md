@@ -84,3 +84,21 @@ env PIP_REQUIRE_VIRTUALENV=false python_exec -m pip install -q --dry-run --ignor
 ```bash
 env PIP_REQUIRE_VIRTUALENV=false python3 -m pip install --upgrade-strategy eager -q --dry-run --ignore-installed --report - -r dev-requirements.in
 ```
+
+### Sync
+
+You can also sync your current environment with the output of `pip install --report` with the `--sync/-s` flag:
+
+```bash
+iso-freeze pyproject.toml -d dev --sync
+```
+
+This will remove any packages that are not dependencies of `dev` and install/update all your packages to match the exact versions provided in the `pip install --report` output.
+
+**Warning**: Be careful when combining the `--sync` and `--python` options. For example:
+
+```bash
+iso-freeze pyproject.toml -d dev --sync --python python3.11
+```
+
+This command would install your dependencies globally! If used in combination with `--sync`, the `--python` flag should point to the executable of a virtual environment. Using the `--sync` while not in any virtual environment will install packages globally too. For security, consider adding `require-virtualenv = true` to your [pip configuration](https://pip.pypa.io/en/stable/topics/configuration/?highlight=require-virtualenv#configuration-files).
