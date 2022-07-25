@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "iso-freeze"
-version = "0.0.10"
+version = "0.0.11"
 authors = [
   { name="Stefan Baack" },
 ]
@@ -37,6 +37,9 @@ dev = [
 [tool.hatch.envs.tests]
 features = [
     "dev"
+]
+dependencies = [
+    "pip >= 22.2"
 ]
 
 [tool.hatch.envs.tests.scripts]
