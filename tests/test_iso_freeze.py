@@ -159,15 +159,15 @@ def test_remove_additional_packages(mocker):
     """Test if additional packages are properly detected and removed."""
     mocker.patch("iso_freeze.iso_freeze.run_pip")
     mocked_pip_list_output = [
-        PyPackage(name="tomli", version="2.0.1", requested=False),
+        PyPackage(name="tomli", version="2.0.1", requested=False, hash=None),
         # Two packages not in mocked pip report output
-        PyPackage(name="pip", version="22.2", requested=False),
-        PyPackage(name="cowsay", version="5.0", requested=False),
+        PyPackage(name="pip", version="22.2", requested=False, hash=None),
+        PyPackage(name="cowsay", version="5.0", requested=False, hash=None),
     ]
     mocked_pip_report_output = [
-        PyPackage(name="tomli", version="2.0.1", requested=True),
+        PyPackage(name="tomli", version="2.0.1", requested=True, hash="sha256:1234"),
         # One package not in mocked pip list output
-        PyPackage(name="pyjokes", version="0.6.0", requested=True),
+        PyPackage(name="pyjokes", version="0.6.0", requested=True, hash="sha256:5678"),
     ]
     iso_freeze.remove_additional_packages(
         installed_packages=mocked_pip_list_output,
@@ -196,14 +196,13 @@ def test_get_installed_packages(mocker):
         {"name": "pip", "version": "22.2"},
         {"name": "pluggy", "version": "1.0.0"},
     ]
-    # TODO: Hashes?
     expected_output = [
-        PyPackage(name="attrs", version="21.4.0", requested=False),
-        PyPackage(name="iniconfig", version="1.1.1", requested=False),
-        PyPackage(name="iso-freeze", version="0.0.10", requested=False),
-        PyPackage(name="packaging", version="21.3", requested=False),
-        PyPackage(name="pip", version="22.2", requested=False),
-        PyPackage(name="pluggy", version="1.0.0", requested=False),
+        PyPackage(name="attrs", version="21.4.0", requested=False, hash=None),
+        PyPackage(name="iniconfig", version="1.1.1", requested=False, hash=None),
+        PyPackage(name="iso-freeze", version="0.0.10", requested=False, hash=None),
+        PyPackage(name="packaging", version="21.3", requested=False, hash=None),
+        PyPackage(name="pip", version="22.2", requested=False, hash=None),
+        PyPackage(name="pluggy", version="1.0.0", requested=False, hash=None),
     ]
     mocker.patch("json.loads", return_value=mocked_pip_list_output)
     actual_output = iso_freeze.get_installed_packages(python_exec=Path("python3"))
@@ -214,8 +213,8 @@ def test_install_pip_report_output(mocker):
     """Test if pip report --install output is properly passed to pip install."""
     mocker.patch("iso_freeze.iso_freeze.run_pip")
     mocked_pip_report_output = [
-        PyPackage(name="tomli", version="2.0.1", requested=True),
-        PyPackage(name="pyjokes", version="0.6.0", requested=True),
+        PyPackage(name="tomli", version="2.0.1", requested=True, hash="sha256:1234"),
+        PyPackage(name="pyjokes", version="0.6.0", requested=True, hash="sha256:5678"),
     ]
     iso_freeze.install_pip_report_output(
         to_install=mocked_pip_report_output,
