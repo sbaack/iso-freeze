@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "iso-freeze"
-version = "0.0.12"
+version = "0.0.12.post1"
 authors = [
   { name="Stefan Baack" },
 ]
@@ -26,12 +26,11 @@ dependencies = [
 "Bug Tracker" = "https://github.com/sbaack/iso-freeze/issues"
 
 [project.scripts]
-iso-freeze = "iso_freeze.iso_freeze:main"
+iso-freeze = "iso_freeze.cli:main"
 
 [project.optional-dependencies]
 dev = [
     "pytest",
-    "pytest-mock"
 ]
 
 [tool.hatch.envs.tests]
