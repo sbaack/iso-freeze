@@ -1,33 +1,73 @@
-import sys
-from typing import Final
+from typing import Any, Final, Optional
 from pathlib import Path
+
+import pytest
 
 from iso_freeze.get_requirements import *
 
 
-TEST_TOML: Final[Path] = Path(Path(__file__).parent.resolve(), "test_pyproject.toml")
+TEST_TOML: Final[dict[str, str]] = {
+    "project": {
+        "dependencies": ["tomli"],
+        "optional-dependencies": {
+            "dev": ["pytest", "pytest-mock"],
+            "virtualenv": ["virtualenv"],
+        },
+    }
+}
+
+TEST_EMPTY_TOML: Final[dict[str, str]] = {
+    "something": {"no_project_section": "nothing"}
+}
+
+TEST_NO_OPS_TOML: Final[dict[str, str]] = {
+    "project": {
+        "dependencies": ["tomli"],
+    }
+}
 
 
-def test_read_toml():
-    """Test whether correct list of requirements is returned."""
-    dev_deps = read_toml(toml_file=TEST_TOML, optional_dependency="dev")
-    assert dev_deps == ["tomli", "pytest", "pytest-mock"]
-
-    virtualenv_deps = read_toml(toml_file=TEST_TOML, optional_dependency="virtualenv")
-    assert virtualenv_deps == ["tomli", "virtualenv"]
-
-    base_requirements = read_toml(toml_file=TEST_TOML, optional_dependency=None)
+def test_read_toml_base_requirements() -> None:
+    """Test if base requirements are captured correctly."""
+    base_requirements: list[str] = read_toml(toml_dict=TEST_TOML, optional_dependency=None)
     assert base_requirements == ["tomli"]
 
 
-def test_build_pip_report_command():
+def test_read_toml_optional_dependency() -> None:
+    """Test optional dependency is captured correctly."""
+    dev_deps: list[str] = read_toml(toml_dict=TEST_TOML, optional_dependency="dev")
+    assert dev_deps == [
+        "tomli",
+        "pytest",
+        "pytest-mock",
+    ]
+
+
+def test_read_toml_missing_optional_dependency() -> None:
+    """Test if missing optional dependency causes sys.exit()."""
+    with pytest.raises(SystemExit):
+        read_toml(toml_dict=TEST_TOML, optional_dependency="something")
+
+
+def test_read_toml_no_optional_dependencies() -> None:
+    """Test if missing optional dependency causes sys.exit()."""
+    with pytest.raises(SystemExit):
+        read_toml(toml_dict=TEST_NO_OPS_TOML, optional_dependency="something")
+
+
+def test_read_toml_no_project_section() -> None:
+    """Test if TOML file without 'project' section causes sys.exit()."""
+    with pytest.raises(SystemExit):
+        read_toml(toml_dict=TEST_EMPTY_TOML, optional_dependency="something")
+
+
+def test_build_pip_report_command() -> None:
     """Test whether pip command is build correctly."""
     # First test: requirements file
-    pip_report_command_1 = build_pip_report_command(
-        file=Path("requirements.in"),
+    pip_report_command_1: list[Union[str, Path]] = build_pip_report_command(
+        pip_report_input=["-r", Path("requirements.in")],
         python_exec=Path("python3"),
         pip_args=None,
-        optional_dependency=None
     )
     expected_pip_report_command_1 = [
         "env",
@@ -46,13 +86,12 @@ def test_build_pip_report_command():
     ]
     assert pip_report_command_1 == expected_pip_report_command_1
     # Second test: TOML dependencies
-    pip_report_command_2 = build_pip_report_command(
-        file=TEST_TOML,
+    pip_report_command_2: list[Union[str, Path]] = build_pip_report_command(
+        pip_report_input=["tomli", "pytest", "pytest-mock"],
         python_exec=Path("python3"),
         pip_args=None,
-        optional_dependency="dev"
     )
-    expected_pip_report_command_2 = [
+    expected_pip_report_command_2: list[Union[str, Path]] = [
         "env",
         "PIP_REQUIRE_VIRTUALENV=false",
         Path("python3"),
@@ -70,13 +109,12 @@ def test_build_pip_report_command():
     ]
     assert pip_report_command_2 == expected_pip_report_command_2
     # Third test: TOML dependencies with pip-args
-    pip_report_command_3 = build_pip_report_command(
-        file=TEST_TOML,
+    pip_report_command_3: list[Union[str, Path]] = build_pip_report_command(
+        pip_report_input=["tomli", "pytest", "pytest-mock"],
         python_exec=Path("python3"),
         pip_args=["--upgrade-strategy", "eager", "--retries", "10"],
-        optional_dependency="dev"
     )
-    expected_pip_report_command_3 = [
+    expected_pip_report_command_3: list[Union[str, Path]] = [
         "env",
         "PIP_REQUIRE_VIRTUALENV=false",
         Path("python3"),
@@ -98,13 +136,12 @@ def test_build_pip_report_command():
     ]
     assert pip_report_command_3 == expected_pip_report_command_3
     # Fourth test: requirements file with pip-args
-    pip_report_command_4 = build_pip_report_command(
-        file=Path("requirements.in"),
+    pip_report_command_4: list[Union[str, Path]] = build_pip_report_command(
+        pip_report_input=["-r", Path("requirements.in")],
         python_exec=Path("python3"),
         pip_args=["--upgrade-strategy", "eager", "--require-hashes"],
-        optional_dependency=None,
     )
-    expected_pip_report_command_4 = [
+    expected_pip_report_command_4: list[Union[str, Path]] = [
         "env",
         "PIP_REQUIRE_VIRTUALENV=false",
         Path("python3"),
@@ -127,7 +164,7 @@ def test_build_pip_report_command():
 
 def test_read_pip_report():
     """Test if pip install --report is correctly captured."""
-    mocked_pip_report_output = {
+    mocked_pip_report_output: dict[str, Any] = {
         "environment": {},
         "install": [
             {
@@ -156,7 +193,7 @@ def test_read_pip_report():
         "pip_version": "22.2",
         "version": "0",
     }
-    expected_result = [
+    expected_result: Optional[list[PyPackage]] = [
         PyPackage(
             name="cool_package",
             version="2.0.1",
@@ -164,14 +201,14 @@ def test_read_pip_report():
             hash="sha256:some_hash",
         )
     ]
-    actual_result = read_pip_report(mocked_pip_report_output)
+    actual_result: Optional[list[PyPackage]] = read_pip_report(mocked_pip_report_output)
     assert actual_result == expected_result
-    mocked_pip_report_output_no_install = {
+    mocked_pip_report_output_no_install: dict[str, Any] = {
         "environment": {},
         "install": [],
         "pip_version": "22.2",
         "version": "0",
     }
-    expected_result = None
-    actual_result = read_pip_report(mocked_pip_report_output_no_install)
+    expected_result: Optional[list[PyPackage]] = None
+    actual_result: Optional[list[PyPackage]] = read_pip_report(mocked_pip_report_output_no_install)
     assert actual_result == expected_result

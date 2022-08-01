@@ -20,29 +20,43 @@ def get_pip_report_requirements(
     pip_args: Optional[list[str]],
     optional_dependency: Optional[str],
 ) -> Optional[list[PyPackage]]:
-    """Get dependencies to pass to pip install --report."""
+    """Get dependencies to pass to pip install --report.
+
+    Arguments:
+        file -- Input file to parse (Path)
+        python_exec -- Path to Python executable (Path)
+        pip_args -- Args to pass to pip install (Optional[list[str]])
+        optional_dependency -- Optional dependency to include (Optional[str])
+
+    Returns:
+        Pip packages from pip install --report output (Optional[list[PyPackage]])
+    """
+    if file.suffix == ".toml":
+        pip_report_input: list[Union[str, Path]] = read_toml(
+            toml_dict=load_toml_file(file), optional_dependency=optional_dependency
+        )
+    else:
+        pip_report_input = ["-r", file]
     pip_report_command: list[Union[str, Path]] = build_pip_report_command(
-        file=file,
+        pip_report_input=pip_report_input,
         python_exec=python_exec,
         pip_args=pip_args,
-        optional_dependency=optional_dependency,
     )
     pip_report: dict[str, Any] = get_pip_report(pip_report_command=pip_report_command)
     return read_pip_report(pip_report)
 
 
 def build_pip_report_command(
-    file: Path,
+    pip_report_input: list[Union[str, Path]],
     python_exec: Path,
     pip_args: Optional[list[str]],
-    optional_dependency: Optional[str]
 ) -> list[Union[str, Path]]:
     """Build pip command to to generate report.
 
     Arguments:
+        pip_report_input -- Packages or file to pass to pip report
+                            (list[Union[str, Path]])
         python_exec -- Path to Python interpreter to use (Path)
-        toml_dependencies -- TOML dependencies to install (Optional[list[str]])
-        requirements_in -- Path to requirements file (Optional[Path])
         pip_args -- Arguments to be passed to pip install (Optional[list[str]])
 
     Returns:
@@ -61,24 +75,34 @@ def build_pip_report_command(
         pip_report_command.extend(pip_args)
     # Add necessary flags for calling pip install report
     pip_report_command.extend(
-        ["-q", "--dry-run", "--ignore-installed", "--report", "-"]
+        ["-q", "--dry-run", "--ignore-installed", "--report", "-", *pip_report_input]
     )
-    # Finally, either append dependencies from TOML file or '-r requirements-file'
-    if file.suffix == ".toml":
-        toml_dependencies = read_toml(
-            toml_file=file, optional_dependency=optional_dependency
-        )
-        pip_report_command.extend([dependency for dependency in toml_dependencies])
-    else:
-        pip_report_command.extend(["-r", file])
+    # # Finally, either append dependencies from TOML file or '-r requirements-file'
+    # if toml_dependencies:
+    #     pip_report_command.extend([dependency for dependency in toml_dependencies])
+    # else:
+    #     pip_report_command.extend(["-r", file])
     return pip_report_command
 
 
+def load_toml_file(toml_file: Path) -> dict[str, str]:
+    """Load TOML file and return its contents
+
+    Arguments:
+        toml_file -- Path to TOML file (Path)
+
+    Returns:
+        Contents of TOML file (dict[str, str])
+    """
+    with open(toml_file, "rb") as f:
+        return tomllib.load(f)
+
+
 def read_toml(
-    toml_file: Path,
+    toml_dict: dict[str, str],
     optional_dependency: Optional[str] = None,
 ) -> list[str]:
-    """Read TOML file and return list dependencies.
+    """Read TOML dict and return listed dependencies.
 
     Includes requirements for optional dependency if any has been specified.
 
@@ -89,16 +113,14 @@ def read_toml(
     Returns:
         List of dependency names (list[str])
     """
-    with open(toml_file, "rb") as f:
-        metadata = tomllib.load(f)
-    if not metadata.get("project"):
+    if not toml_dict.get("project"):
         sys.exit("TOML file does not contain a 'project' section.")
-    dependencies: list[str] = metadata["project"].get("dependencies")
+    dependencies: list[str] = toml_dict["project"].get("dependencies")
     if optional_dependency:
-        if not metadata["project"].get("optional-dependencies"):
+        if not toml_dict["project"].get("optional-dependencies"):
             sys.exit("No optional dependencies defined in TOML file.")
         optional_dependency_reqs: Optional[list[str]] = (
-            metadata["project"].get("optional-dependencies").get(optional_dependency)
+            toml_dict["project"].get("optional-dependencies").get(optional_dependency)
         )
         if optional_dependency_reqs:
             dependencies.extend(optional_dependency_reqs)
@@ -122,10 +144,10 @@ def get_pip_report(pip_report_command: list[Union[Path, str]]) -> dict[str, Any]
 
 
 def read_pip_report(pip_report: dict[str, Any]) -> Optional[list[PyPackage]]:
-    """Extract package names and versions from pip report.
+    """Extract package informations from pip report.
 
     Arguments:
-        pip_report_command -- Command for subprocess (list[Union[Path, str]])
+        pip_report -- Json pip report (dict[str, Any])
 
     Returns:
         List of PyPackage objects containing infos to pin requirements (list[PyPackage])

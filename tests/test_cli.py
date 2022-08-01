@@ -1,11 +1,12 @@
 import os
 
 from pathlib import Path
+import pytest
 
 from iso_freeze.cli import *
 
 
-def test_determine_default():
+def test_determine_default() -> None:
     """Test whether correct default file is picked if none is specified."""
     # If only requirements.in found, return that
     os.chdir(Path(Path(__file__).parent.resolve(), "test_directories", "requirements"))
@@ -21,7 +22,7 @@ def test_determine_default():
     assert determine_default_file() == Path("requirements.in")
 
 
-def test_validate_pip_version():
+def test_validate_pip_version() -> None:
     """Test whether pip version is validated correctly."""
     mocked_pip_version_output_1 = "pip 22.2 from /funny/path/pip (python 3.9)"
     assert validate_pip_version(pip_version_output=mocked_pip_version_output_1) == True
@@ -35,16 +36,40 @@ def test_validate_pip_version():
     assert validate_pip_version(pip_version_output=mocked_pip_version_output_5) == True
 
 
-def test_parse_args():
+def test_parse_args() -> None:
     """Test of args are correctly parsed."""
     sys.argv[1:] = ["pyproject.toml", "-d", "dev"]
-    test_args1 = parse_args()
+    test_args1: argparse.Namespace = parse_args()
     assert test_args1.python == Path("python3")
     assert test_args1.dependency == "dev"
     assert test_args1.file == Path("pyproject.toml")
     assert test_args1.output == Path("requirements.txt")
     sys.argv[1:] = ["requirements.in", "--pip-args", "--upgrade-strategy eager"]
-    test_args2 = parse_args()
+    test_args2: argparse.Namespace = parse_args()
     assert test_args2.pip_args == ["--upgrade-strategy", "eager"]
     assert test_args2.sync == False
     assert test_args2.hashes == False
+
+
+def test_input_file_doesnt_exist() -> None:
+    """Test if providing non-existing file causes sys.exit()."""
+    sys.argv[1:] = ["some file that should not exist!!!111"]
+    with pytest.raises(SystemExit) as e:
+        parse_args()
+    assert e.type == SystemExit
+
+
+def test_no_default_file_found() -> None:
+    """Test if sys.exit() raised when no file provided and no default can be found."""
+    os.chdir(Path(Path(__file__).parent.resolve(), "test_directories", "neither"))
+    with pytest.raises(SystemExit) as e:
+        parse_args()
+    assert e.type == SystemExit
+
+
+def test_combine_requirements_dependency() -> None:
+    """Test if sys.exit() raised when optional dependency is specified for requirements file."""
+    sys.argv[1:] = ["requirements.in", "-d", "dev"]
+    with pytest.raises(SystemExit) as e:
+        parse_args()
+    assert e.type == SystemExit

@@ -22,7 +22,7 @@ def run_pip(command: list[Union[str, Path]], check_output: bool) -> Any:
     """Run specified pip command with subprocess and return results, if any.
 
     Arguments:
-        command -- pip command to execute (list[Union[str, Path]])
+        command -- Pip command to execute (list[Union[str, Path]])
 
     Keyword Arguments:
         check_output -- Whether to call subprocess.check_output (default: {False})

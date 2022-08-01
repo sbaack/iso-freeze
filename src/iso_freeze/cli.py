@@ -13,7 +13,11 @@ from iso_freeze.pin_requirements import pin_requirements
 
 
 def get_pip_version(python_exec: Path) -> str:
-    """Return pip --version output."""
+    """Return pip --version output.
+
+    Returns:
+        pip --version output (str)
+    """
     return run_pip(command=[python_exec, "-m", "pip", "--version"], check_output=True)
 
 
@@ -121,6 +125,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    """ClI entry point."""
     arguments: argparse.Namespace = parse_args()
     if not validate_pip_version(pip_version_output=get_pip_version(arguments.python)):
         sys.exit("pip >= 22.2 required. Please update pip and try again.")

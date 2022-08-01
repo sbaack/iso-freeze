@@ -8,6 +8,12 @@ from iso_freeze.lib import PyPackage, run_pip
 
 
 def sync(requirements: list[PyPackage], python_exec: Path) -> None:
+    """Sync environment with pip install --report output.
+
+    Arguments:
+        requirements -- List of dependencies to sync with (list[PyPackage])
+        python_exec -- Path to Python interpreter to use (Path)
+    """
     installed_packages: list[PyPackage] = get_installed_packages(
         pip_list_output=get_pip_list_output(python_exec=python_exec)
     )
@@ -27,7 +33,14 @@ def sync(requirements: list[PyPackage], python_exec: Path) -> None:
 
 
 def get_pip_list_output(python_exec: Path) -> list[dict[str, str]]:
-    """Run pip list --format json output."""
+    """Run pip list --format json output.
+
+    Arguments:
+        python_exec -- Path to Python interpreter to use (Path)
+
+    Returns:
+        Pip list output as JSON (list[dict[str, str]])
+    """
     return json.loads(
         run_pip(
             command=[
@@ -45,7 +58,10 @@ def get_pip_list_output(python_exec: Path) -> list[dict[str, str]]:
 
 
 def get_installed_packages(pip_list_output: list[dict[str, str]]) -> list[PyPackage]:
-    """Return PyPackage objects from pip list output.
+    """Return pip list output as PyPackage objects.
+
+    Arguments:
+        pip_list_output -- Pip list output as JSON (list[dict[str, str]])
 
     Returns:
         List of packages from current environment (list[PyPackage])
@@ -65,6 +81,7 @@ def get_additional_packages(
         installed_packages -- List of packages installed in current environment
                               (list[PyPackage])
         to_install -- List of packages taken from pip install --report
+                      (list[PyPackages])
 
     Returns:
         List of installed packages not in pip report (Optional[list[str]])
@@ -84,21 +101,27 @@ def get_additional_packages(
 def remove_additional_packages(
     additional_packages: Optional[list[str]], python_exec: Path
 ) -> None:
-    """Remove packages installed in environment but not included in pip install --report.
+    """Remove installed packages not included in pip install --report.
 
     Arguments:
         additional_packages -- List of packages to remove (Optional[list[str]])
         python_exec -- Path to Python executable (Path)
     """
-    if additional_packages:
-        run_pip(
-            command=[python_exec, "-m", "pip", "uninstall", "-y", *additional_packages],
-            check_output=False,
-        )
+    run_pip(
+        command=[python_exec, "-m", "pip", "uninstall", "-y", *additional_packages],
+        check_output=False,
+    )
 
 
 def format_package_list(packages: list[PyPackage]) -> list[str]:
-    """Create list in the format ["package1==versionX"] to pass that to `pip install`"""
+    """Create list in the format ["package1==versionX"] to pass that to `pip install`.
+
+    Arguments:
+        packages -- List of packages to install (list[PyPackage])
+
+    Returns:
+        List of packages to be passed to pip install (list[str])
+    """
     return [f"{package.name}=={package.version}" for package in packages]
 
 
@@ -106,7 +129,7 @@ def install_pip_report_output(to_install: list[str], python_exec: Path) -> None:
     """Install packages with pinned versions from pip install --report output.
 
     Arguments:
-        to_install -- List of packages taken from pip install --report
+        to_install -- List of packages taken from pip install --report (list[str])
         python_exec -- Path to Python executable (Path)
     """
     run_pip(

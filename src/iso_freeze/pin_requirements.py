@@ -8,6 +8,13 @@ from iso_freeze.lib import PyPackage
 def pin_requirements(
     requirements: list[PyPackage], hashes: bool, output_file: Path
 ) -> None:
+    """Write *requirements.txt file.
+
+    Arguments:
+        requirements -- List of packages to pin (list[PyPackage])
+        hashes -- Whether to include hashes (bool)
+        output_file -- Path to file that should be created (Path)
+    """
     output_file_contents: list[str] = build_reqirements_file_contents(
         requirements=requirements, hashes=hashes
     )
@@ -17,13 +24,13 @@ def pin_requirements(
 
 def build_reqirements_file_contents(
     requirements: list[PyPackage], hashes: bool
-) -> None:
-    """Build lists to be written to a requirements file.
+) -> list[str]:
+    """Build contents of requirements file as a list.
 
     Display top level dependencies on top, similar to pip freeze -r requirements_file.
 
     Arguments:
-        dependencies -- Dependencies listed in pip install --report (list[dict[str]])
+        requirements -- Dependencies listed in pip install --report (list[dict[str]])
         hashes -- Whether to include hashes (bool)
 
     Returns:
