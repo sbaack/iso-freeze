@@ -32,11 +32,15 @@ def get_pip_report_requirements(
         Pip packages from pip install --report output (Optional[list[PyPackage]])
     """
     if file.suffix == ".toml":
-        pip_report_input: list[Union[str, Path]] = read_toml(
+        # pip_report_input type is either just list[str] (for TOML dependencies) or
+        # list[Union[str, Path]] (for requirements file).
+        pip_report_input: Union[list[str], list[Union[str, Path]]] = read_toml(
             toml_dict=load_toml_file(file), optional_dependency=optional_dependency
         )
     else:
-        pip_report_input = ["-r", file]
+        # Telling mypy to ignore type here because it thinks that ["-r", file]
+        # is list[object] rather than list[Union[str, Path]]
+        pip_report_input = ["-r", file]  # type: ignore
     pip_report_command: list[Union[str, Path]] = build_pip_report_command(
         pip_report_input=pip_report_input,
         python_exec=python_exec,
@@ -47,7 +51,7 @@ def get_pip_report_requirements(
 
 
 def build_pip_report_command(
-    pip_report_input: list[Union[str, Path]],
+    pip_report_input: Union[list[str], list[Union[str, Path]]],
     python_exec: Path,
     pip_args: Optional[list[str]],
 ) -> list[Union[str, Path]]:
@@ -85,7 +89,7 @@ def build_pip_report_command(
     return pip_report_command
 
 
-def load_toml_file(toml_file: Path) -> dict[str, str]:
+def load_toml_file(toml_file: Path) -> dict[str, Any]:
     """Load TOML file and return its contents
 
     Arguments:
@@ -99,7 +103,7 @@ def load_toml_file(toml_file: Path) -> dict[str, str]:
 
 
 def read_toml(
-    toml_dict: dict[str, str],
+    toml_dict: dict[str, Any],
     optional_dependency: Optional[str] = None,
 ) -> list[str]:
     """Read TOML dict and return listed dependencies.
