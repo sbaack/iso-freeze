@@ -1,4 +1,11 @@
-from iso_freeze.sync import *
+from typing import Optional
+
+from iso_freeze.lib import PyPackage
+from iso_freeze.sync import (
+    get_additional_packages,
+    get_installed_packages,
+    format_package_list,
+)
 
 
 def test_get_installed_packages() -> None:

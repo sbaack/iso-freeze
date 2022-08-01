@@ -1,4 +1,5 @@
-from iso_freeze.pin_requirements import *
+from iso_freeze.lib import PyPackage
+from iso_freeze.pin_requirements import build_reqirements_file_contents
 
 MOCKED_REQUIREMENTS = [
     PyPackage(name="tomli", version="2.0.1", requested=True, hash="sha256:1234"),

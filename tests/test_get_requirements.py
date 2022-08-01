@@ -1,12 +1,17 @@
-from typing import Any, Final, Optional
+from typing import Any, Final, Optional, Union
 from pathlib import Path
 
 import pytest
 
-from iso_freeze.get_requirements import *
+from iso_freeze.lib import PyPackage
+from iso_freeze.get_requirements import (
+    read_toml,
+    read_pip_report,
+    build_pip_report_command,
+)
 
 
-TEST_TOML: Final[dict[str, str]] = {
+TEST_TOML: Final[dict[str, Any]] = {
     "project": {
         "dependencies": ["tomli"],
         "optional-dependencies": {
@@ -16,11 +21,11 @@ TEST_TOML: Final[dict[str, str]] = {
     }
 }
 
-TEST_EMPTY_TOML: Final[dict[str, str]] = {
+TEST_EMPTY_TOML: Final[dict[str, Any]] = {
     "something": {"no_project_section": "nothing"}
 }
 
-TEST_NO_OPS_TOML: Final[dict[str, str]] = {
+TEST_NO_OPS_TOML: Final[dict[str, Any]] = {
     "project": {
         "dependencies": ["tomli"],
     }
@@ -29,7 +34,9 @@ TEST_NO_OPS_TOML: Final[dict[str, str]] = {
 
 def test_read_toml_base_requirements() -> None:
     """Test if base requirements are captured correctly."""
-    base_requirements: list[str] = read_toml(toml_dict=TEST_TOML, optional_dependency=None)
+    base_requirements: list[str] = read_toml(
+        toml_dict=TEST_TOML, optional_dependency=None
+    )
     assert base_requirements == ["tomli"]
 
 
@@ -162,7 +169,7 @@ def test_build_pip_report_command() -> None:
     assert pip_report_command_4 == expected_pip_report_command_4
 
 
-def test_read_pip_report():
+def test_read_pip_report() -> None:
     """Test if pip install --report is correctly captured."""
     mocked_pip_report_output: dict[str, Any] = {
         "environment": {},
@@ -193,7 +200,7 @@ def test_read_pip_report():
         "pip_version": "22.2",
         "version": "0",
     }
-    expected_result: Optional[list[PyPackage]] = [
+    expected_result_1: Optional[list[PyPackage]] = [
         PyPackage(
             name="cool_package",
             version="2.0.1",
@@ -201,14 +208,18 @@ def test_read_pip_report():
             hash="sha256:some_hash",
         )
     ]
-    actual_result: Optional[list[PyPackage]] = read_pip_report(mocked_pip_report_output)
-    assert actual_result == expected_result
+    actual_result_1: Optional[list[PyPackage]] = read_pip_report(
+        mocked_pip_report_output
+    )
+    assert actual_result_1 == expected_result_1
     mocked_pip_report_output_no_install: dict[str, Any] = {
         "environment": {},
         "install": [],
         "pip_version": "22.2",
         "version": "0",
     }
-    expected_result: Optional[list[PyPackage]] = None
-    actual_result: Optional[list[PyPackage]] = read_pip_report(mocked_pip_report_output_no_install)
-    assert actual_result == expected_result
+    expected_result_2: Optional[list[PyPackage]] = None
+    actual_result_2: Optional[list[PyPackage]] = read_pip_report(
+        mocked_pip_report_output_no_install
+    )
+    assert actual_result_2 == expected_result_2
