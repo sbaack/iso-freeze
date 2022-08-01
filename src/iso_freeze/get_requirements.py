@@ -59,7 +59,7 @@ def build_pip_report_command(
 
     Arguments:
         pip_report_input -- Packages or file to pass to pip report
-                            (list[Union[str, Path]])
+                            (Union[list[str], list[Union[str, Path]]])
         python_exec -- Path to Python interpreter to use (Path)
         pip_args -- Arguments to be passed to pip install (Optional[list[str]])
 
