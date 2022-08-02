@@ -41,6 +41,7 @@ def test_get_additional_packages() -> None:
         # Two packages not in mocked pip report output
         PyPackage(name="pip", version="22.2", requested=False, hash=None),
         PyPackage(name="cowsay", version="5.0", requested=False, hash=None),
+        PyPackage(name="iso-freeze", version="0.0.7", requested=False, hash=None),
     ]
     mocked_pip_report_output: list[PyPackage] = [
         PyPackage(name="tomli", version="2.0.1", requested=True, hash="sha256:1234"),
@@ -51,7 +52,7 @@ def test_get_additional_packages() -> None:
         installed_packages=mocked_pip_list_output,
         to_install=mocked_pip_report_output,
     )
-    # pip should not be removed, cowsay should
+    # pip and iso-freeze should not be removed, cowsay should
     assert to_delete == ["cowsay"]
 
 

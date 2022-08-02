@@ -93,8 +93,8 @@ def get_additional_packages(
         package
         for package in installed_names_only
         if package not in to_install_names_only
-        # Don't remove default packages
-        if package not in ["pip", "setuptools"]
+        # Don't remove default packages or iso-freeze itself
+        if package not in ["pip", "setuptools", "iso-freeze"]
     ]
 
 
