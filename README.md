@@ -108,7 +108,7 @@ This will remove any packages that are not dependencies of `dev`, install missin
 iso-freeze pyproject.toml -d dev --sync --python python3.11
 ```
 
-This command would install your dependencies globally! If used in combination with `--sync`, the `--python` flag should point to the executable of a virtual environment. Using the `--sync` flag while not in any virtual environment will install packages globally too. For security, consider adding `require-virtualenv = true` to your [pip configuration](https://pip.pypa.io/en/stable/topics/configuration/?highlight=require-virtualenv#configuration-files).
+This command would install your dependencies globally! If used in combination with `--sync`, the `--python` flag should point to the executable of a virtual environment. Using `--sync` without the `--python` flag when no virtual environment is activated will install packages globally too. For security, consider adding `require-virtualenv = true` to your [pip configuration](https://pip.pypa.io/en/stable/topics/configuration/?highlight=require-virtualenv#configuration-files).
 
 Note that `--sync` ignores editable installs.
 
