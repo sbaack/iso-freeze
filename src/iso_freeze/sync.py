@@ -1,6 +1,7 @@
 """Sync environment with pip install --report output."""
 
 import json
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -89,12 +90,15 @@ def get_additional_packages(
     # Create two lists with packages names only for easy comparison
     installed_names_only: list[str] = [package.name for package in installed_packages]
     to_install_names_only: list[str] = [package.name for package in to_install]
+    to_exclude: list[str] = ["pip", "setuptools", "iso-freeze"]
+    if sys.version_info < (3, 11, 0):
+        to_exclude.append("tomli")
     return [
         package
         for package in installed_names_only
         if package not in to_install_names_only
         # Don't remove default packages or iso-freeze itself
-        if package not in ["pip", "setuptools", "iso-freeze"]
+        if package not in to_exclude
     ]
 
 
