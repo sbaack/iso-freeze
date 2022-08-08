@@ -8,7 +8,10 @@ MOCKED_REQUIREMENTS = [
 
 
 def test_build_reqirements_file_contents_no_hashes() -> None:
-    """Test if requirements file contents are correctly build."""
+    """
+    List used to build requirement files adds distinction between top level
+    requirements and their dependencies via comments.
+    """
     expected_output_no_hashes: list[str] = [
         "# Top level requirements",
         "tomli==2.0.1",
@@ -22,7 +25,11 @@ def test_build_reqirements_file_contents_no_hashes() -> None:
 
 
 def test_build_reqirements_file_contents_with_hashes() -> None:
-    """Test if requirements file contents are correctly build with hashes."""
+    """
+    List used to build requirement files adds distinction between top level
+    requirements and their dependencies via comments, and hashes are added
+    correctly.
+    """
     expected_output_hashes = [
         "# Top level requirements",
         "tomli==2.0.1 \\\n" "    --hash=sha256:1234",

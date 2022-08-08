@@ -9,7 +9,7 @@ from iso_freeze.sync import (
 
 
 def test_get_installed_packages() -> None:
-    """Test if pip list output correctly parsed."""
+    """Pip list output parsed into PyProject objects that capture names and versions."""
     mocked_pip_list_output = [
         {"name": "attrs", "version": "21.4.0"},
         {"name": "iniconfig", "version": "1.1.1"},
@@ -35,7 +35,10 @@ def test_get_installed_packages() -> None:
 
 
 def test_get_additional_packages() -> None:
-    """Test if additional packages are properly detected."""
+    """
+    Packages in environment but not in report are captured, unless they should be
+    excluded.
+    """
     mocked_pip_list_output: list[PyPackage] = [
         PyPackage(name="tomli", version="2.0.1", requested=False, hash=None),
         # Two packages not in mocked pip report output
@@ -57,7 +60,10 @@ def test_get_additional_packages() -> None:
 
 
 def test_format_package_list() -> None:
-    """Test if pip report --install output is properly passed to pip install."""
+    """
+    Lists of PyPackage objects are formatted into lists of strings in a form that can be
+    passed to 'pip install' (<name==version_number>).
+    """
     mocked_pip_report_output: list[PyPackage] = [
         PyPackage(name="tomli", version="2.0.1", requested=True, hash="sha256:1234"),
         PyPackage(name="pyjokes", version="0.6.0", requested=True, hash="sha256:5678"),

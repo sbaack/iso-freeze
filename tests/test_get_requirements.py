@@ -33,7 +33,7 @@ TEST_NO_OPS_TOML: Final[dict[str, Any]] = {
 
 
 def test_read_toml_base_requirements() -> None:
-    """Test if base requirements are captured correctly."""
+    """Only return base requirements listed in TOML file."""
     base_requirements: list[str] = read_toml(
         toml_dict=TEST_TOML, optional_dependency=None
     )
@@ -41,7 +41,10 @@ def test_read_toml_base_requirements() -> None:
 
 
 def test_read_toml_optional_dependency() -> None:
-    """Test optional dependency is captured correctly."""
+    """
+    Return list that contains both base requirements and the specified optional
+    dependency in TOML file.
+    """
     dev_deps: list[str] = read_toml(toml_dict=TEST_TOML, optional_dependency="dev")
     assert dev_deps == [
         "tomli",
@@ -51,25 +54,31 @@ def test_read_toml_optional_dependency() -> None:
 
 
 def test_read_toml_missing_optional_dependency() -> None:
-    """Test if missing optional dependency causes sys.exit()."""
+    """
+    sys.exit() if user specifies an optional dependency that does exist in in TOML
+    file.
+    """
     with pytest.raises(SystemExit):
         read_toml(toml_dict=TEST_TOML, optional_dependency="something")
 
 
 def test_read_toml_no_optional_dependencies() -> None:
-    """Test if missing optional dependency causes sys.exit()."""
+    """
+    sys.exit() if user specifies an optional dependency for TOML file that contains no
+    optional dependencies at all.
+    """
     with pytest.raises(SystemExit):
         read_toml(toml_dict=TEST_NO_OPS_TOML, optional_dependency="something")
 
 
 def test_read_toml_no_project_section() -> None:
-    """Test if TOML file without 'project' section causes sys.exit()."""
+    """sys.exit() if TOML file contains no 'project' section."""
     with pytest.raises(SystemExit):
         read_toml(toml_dict=TEST_EMPTY_TOML, optional_dependency="something")
 
 
 def test_build_pip_report_command() -> None:
-    """Test whether pip command is build correctly."""
+    """Translate various inputs into corresponding pip report commands."""
     # First test: requirements file
     pip_report_command_1: list[Union[str, Path]] = build_pip_report_command(
         pip_report_input=["-r", Path("requirements.in")],
@@ -170,7 +179,10 @@ def test_build_pip_report_command() -> None:
 
 
 def test_read_pip_report() -> None:
-    """Test if pip install --report is correctly captured."""
+    """
+    Pip report output is turned into list of PyPackage objects capturing names, versions
+    and hashes of packages, or None if pip report's 'install' section is empty.
+    """
     mocked_pip_report_output: dict[str, Any] = {
         "environment": {},
         "install": [

@@ -8,7 +8,10 @@ from iso_freeze.cli import determine_default_file, validate_pip_version, parse_a
 
 
 def test_determine_default() -> None:
-    """Test whether correct default file is picked if none is specified."""
+    """
+    requirements.in or pyproject.toml picked as default file if found in working
+    directory, or None if neither is present.
+    """
     # If only requirements.in found, return that
     os.chdir(Path(Path(__file__).parent.resolve(), "test_directories", "requirements"))
     assert determine_default_file() == Path("requirements.in")
@@ -24,7 +27,9 @@ def test_determine_default() -> None:
 
 
 def test_validate_pip_version() -> None:
-    """Test whether pip version is validated correctly."""
+    """
+    Validate pip version number from pip --version output, True if >= 22.2, else False.
+    """
     mocked_pip_version_output_1 = "pip 22.2 from /funny/path/pip (python 3.9)"
     assert validate_pip_version(pip_version_output=mocked_pip_version_output_1) is True
     mocked_pip_version_output_2 = "pip 22.1 from /funny/path/pip (python 3.9)"
@@ -53,7 +58,7 @@ def test_parse_args() -> None:
 
 
 def test_input_file_doesnt_exist() -> None:
-    """Test if providing non-existing file causes sys.exit()."""
+    """sys.exit() if specified file doesn't exist."""
     sys.argv[1:] = ["some file that should not exist!!!111"]
     with pytest.raises(SystemExit) as e:
         parse_args()
@@ -61,7 +66,10 @@ def test_input_file_doesnt_exist() -> None:
 
 
 def test_no_default_file_found() -> None:
-    """Test if sys.exit() raised when no file provided and no default can be found."""
+    """
+    sys.exit() if no file specified and neither requirements.in or pyproject.toml in
+    working directory.
+    """
     os.chdir(Path(Path(__file__).parent.resolve(), "test_directories", "neither"))
     with pytest.raises(SystemExit) as e:
         parse_args()
@@ -69,7 +77,7 @@ def test_no_default_file_found() -> None:
 
 
 def test_combine_requirements_dependency() -> None:
-    """Test if sys.exit() when optional dependency specified for requirements file."""
+    """sys.exit() when optional dependency specified for requirements file."""
     sys.argv[1:] = ["requirements.in", "-d", "dev"]
     with pytest.raises(SystemExit) as e:
         parse_args()
