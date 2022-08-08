@@ -81,11 +81,6 @@ def build_pip_report_command(
     pip_report_command.extend(
         ["-q", "--dry-run", "--ignore-installed", "--report", "-", *pip_report_input]
     )
-    # # Finally, either append dependencies from TOML file or '-r requirements-file'
-    # if toml_dependencies:
-    #     pip_report_command.extend([dependency for dependency in toml_dependencies])
-    # else:
-    #     pip_report_command.extend(["-r", file])
     return pip_report_command
 
 
@@ -96,7 +91,7 @@ def load_toml_file(toml_file: Path) -> dict[str, Any]:
         toml_file -- Path to TOML file (Path)
 
     Returns:
-        Contents of TOML file (dict[str, str])
+        Contents of TOML file (dict[str, Any])
     """
     with open(toml_file, "rb") as f:
         return tomllib.load(f)
@@ -111,8 +106,8 @@ def read_toml(
     Includes requirements for optional dependency if any has been specified.
 
     Keyword Arguments:
-        toml_file -- Path to pyproject.toml file
-        optional_dependency -- Optional dependency to include (default: None)
+        toml_dict -- Contents of pyproject.toml file (dict[str, Any])
+        optional_dependency -- Optional dependency to include (Optional[str])
 
     Returns:
         List of dependency names (list[str])
